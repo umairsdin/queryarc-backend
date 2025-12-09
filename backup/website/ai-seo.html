@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI SEO Hub – QueryArc</title>
+    <meta name="description" content="The QueryArc AI SEO Hub shows you how to structure content for AI search engines, LLM SEO, GEO, and AI visibility with semantic blocks, fanout queries, and Arc Rank.">
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<header class="qa-header">
+
+  <!-- NAVIGATION (reuse from homepage) -->
+  <div class="qa-nav">
+    <div class="qa-logo">
+      <img src="queryarc-logo.svg" alt="QueryArc logo">
+    </div>
+
+    <nav class="qa-nav-links">
+
+        <a href="/">Home</a>
+
+        <div class="dropdown">
+            <a href="/ai-seo" class="drop-trigger active">Learn</a>
+            <div class="drop-menu">
+                <a href="/ai-seo">AI SEO Hub</a>
+                <a href="/llm-seo">LLM SEO</a>
+                <a href="/fanout-queries">Fanout Queries</a>
+                <a href="/arc-rank">Arc Rank Methodology</a>
+                <div class="divider"></div>
+                <a href="/blog" class="future">Blog</a>
+                <a href="/ai-search-library" class="future">AI Search Library</a>
+                <a href="/case-studies" class="future">Case Studies</a>
+                <a href="/industry-examples" class="future">Industry Examples</a>
+            </div>
+        </div>
+
+        <div class="dropdown">
+            <a href="/app" class="drop-trigger">Tools</a>
+            <div class="drop-menu">
+                <a href="/app">Arc Rank Checker</a>
+                <div class="divider"></div>
+                <a class="future">Semantic Block Builder</a>
+                <a class="future">Fanout Visualizer</a>
+                <a class="future">LLM Parser Demo</a>
+                <a class="future">Arc Rank Checker Pro</a>
+                <a class="future">Definitions Expander</a>
+            </div>
+        </div>
+
+        <a href="/training">Training</a>
+        <a class="future">Enterprise</a>
+        <a href="/about">About</a>
+
+        <a href="https://app.queryarc.com" class="qa-nav-cta">Open App</a>
+
+    </nav>
+  </div>
+
+  <!-- AI SEO HERO -->
+  <div class="qa-hero qa-hero-ai-seo">
+
+    <!-- LEFT SIDE COPY -->
+    <div class="qa-hero-copy">
+        <h1>The Complete Guide to AI SEO</h1>
+
+        <p>
+            Learn how to structure your content so AI search engines and large language models can actually read it,
+            trust it, and reuse it in AI Overviews and generative answers.
+        </p>
+
+        <div class="cta-buttons">
+            <button class="primary-btn" onclick="location.href='https://app.queryarc.com'">Check Your Arc Rank</button>
+            <button class="secondary-btn" onclick="location.href='/arc-rank'">Learn the Methodology</button>
+        </div>
+
+        <p class="hero-meta">
+            Built by <strong>QueryArc</strong> · Updated: <span>Month Year</span>
+        </p>
+    </div>
+
+    <!-- RIGHT SIDE HERO VISUAL -->
+    <div class="qa-hero-mockup">
+        <img src="/assets/ai-seo-hero-visual.png" alt="AI SEO content flowing into AI search engines and LLM answers" class="hero-mockup-img">
+    </div>
+
+  </div>
+</header>
+
+<main>
+
+  <!-- MAIN LAYOUT: TOC + CONTENT -->
+  <div class="qa-layout">
+
+    <!-- STICKY TOC COLUMN (you can style .qa-toc to be sticky on desktop) -->
+    <aside class="qa-toc" aria-label="On this page">
+      <h2>On this page</h2>
+      <nav>
+        <ul>
+          <li><a href="#ai-seo-identity">Page identity</a></li>
+          <li><a href="#ai-seo-summary">Quick summary</a></li>
+          <li><a href="#ai-seo-definitions">Key definitions</a></li>
+          <li><a href="#ai-seo-what-is">What is AI SEO?</a></li>
+          <li><a href="#ai-seo-why-it-matters">Why AI SEO matters</a></li>
+          <li><a href="#ai-seo-how-it-works">How AI search works</a></li>
+          <li><a href="#ai-seo-pillars">Four pillars</a></li>
+          <li><a href="#ai-seo-semantic-blocks">Semantic blocks</a></li>
+          <li><a href="#ai-seo-visibility-geo">AI visibility &amp; GEO</a></li>
+          <li><a href="#ai-seo-fanout">Fanout queries</a></li>
+          <li><a href="#ai-seo-tri-layer">Tri-layer model</a></li>
+          <li><a href="#ai-seo-quick-wins">Quick wins</a></li>
+          <li><a href="#ai-seo-before-after">Before &amp; after</a></li>
+          <li><a href="#ai-seo-faq">FAQ</a></li>
+          <li><a href="#ai-seo-conclusion">Conclusion</a></li>
+          <li><a href="#ai-seo-author">About QueryArc</a></li>
+          <li><a href="#ai-seo-resources">Core resources</a></li>
+          <li><a href="#ai-seo-advanced">Advanced blueprint</a></li>
+        </ul>
+      </nav>
+    </aside>
+
+    <!-- MAIN CONTENT COLUMN -->
+    <div class="qa-main">
+
+      <!-- SECTION 2 — PAGE IDENTITY -->
+      <section id="ai-seo-identity">
+        <h2>Page identity: what this guide is for</h2>
+
+        <div class="card-grid">
+          <div class="card">
+            <h3>What this page is</h3>
+            <p>
+              This is QueryArc’s canonical guide to AI SEO — an introduction to how AI search engines and LLMs read,
+              evaluate, and reuse your content.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Who it is for</h3>
+            <ul>
+              <li>SEO leads and strategists</li>
+              <li>Content and documentation teams</li>
+              <li>Founders and product marketers</li>
+              <li>Agencies building AI search services</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>When to use it</h3>
+            <p>
+              Use this guide when you want your pages to appear inside AI answers, AI Overviews, generative search
+              results, or chat-based explanations.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Why it is trustworthy</h3>
+            <p>
+              The frameworks here are based on hands-on tests across ChatGPT, Perplexity, Gemini, and Copilot,
+              combined with QueryArc’s Arc Rank scoring and AI visibility analysis.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 3 — QUICK SUMMARY -->
+      <section id="ai-seo-summary">
+        <h2>AI SEO in one view</h2>
+
+        <p>
+          <strong>AI SEO</strong> is the practice of structuring and expressing your content so AI search engines
+          and large language models can easily interpret it, extract its meaning, and reuse it inside generative answers.
+        </p>
+
+        <h3>On this page you will learn how to:</h3>
+        <ul>
+          <li>See how AI search differs from traditional SEO</li>
+          <li>Use semantic blocks and clear definitions for structure</li>
+          <li>Align your pages with fanout queries and multi-intent questions</li>
+          <li>Increase AI visibility and generative citations</li>
+          <li>Measure readiness with Arc Rank and improve over time</li>
+        </ul>
+
+        <h3>Why this matters now</h3>
+        <ul>
+          <li>AI Overviews and chat results increasingly replace classic SERPs</li>
+          <li>Generative answers choose content based on structure and clarity</li>
+          <li>Early adopters gain compounding visibility and brand familiarity</li>
+        </ul>
+
+        <p class="note">
+          In our tests, pages with a clear summary and definitions block appear more often in generative answers than
+          similar content without structure.
+        </p>
+      </section>
+
+      <!-- SECTION 4 — KEY DEFINITIONS -->
+      <section id="ai-seo-definitions">
+        <h2>Key definitions</h2>
+        <p>Use these terms consistently across your AI SEO content so humans and LLMs share the same vocabulary.</p>
+
+        <div class="card-grid">
+          <div class="card">
+            <h3>AI SEO</h3>
+            <p>Structuring content so AI search engines can interpret and reuse it inside generative answers.</p>
+          </div>
+          <div class="card">
+            <h3>LLM SEO</h3>
+            <p>Optimizing content for how LLMs break down, understand, and extract meaning from semantic blocks.</p>
+          </div>
+          <div class="card">
+            <h3>GEO</h3>
+            <p>Generative engine optimization: improving how often engines select your content as answer material.</p>
+          </div>
+          <div class="card">
+            <h3>AEO</h3>
+            <p>Answer engine optimization: formatting content so it acts as concise answers in AI Overviews and Q&A boxes.</p>
+          </div>
+          <div class="card">
+            <h3>Semantic blocks</h3>
+            <p>Self-contained units with headings, definitions, and explanations that models can reuse independently.</p>
+          </div>
+          <div class="card">
+            <h3>Fanout queries</h3>
+            <p>The hidden sub-questions an LLM generates behind a single user query.</p>
+          </div>
+          <div class="card">
+            <h3>AI visibility</h3>
+            <p>How often your content is used, cited, or paraphrased across AI engines.</p>
+          </div>
+          <div class="card">
+            <h3>Canonical clarity</h3>
+            <p>Making your page’s purpose, audience, and trust signals unambiguous.</p>
+          </div>
+          <div class="card">
+            <h3>Arc Rank</h3>
+            <p>An AI readiness score based on structure, clarity, authority, experience, and canonical clarity.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 5 — WHAT IS AI SEO? -->
+      <section id="ai-seo-what-is">
+        <h2>What is AI SEO?</h2>
+
+        <div class="qa-two-col">
+          <div>
+            <p>
+              AI SEO is the bridge between traditional SEO and AI-driven discovery. Instead of optimizing only for
+              rankings, you also optimize to be selected as input material for generative answers across engines like
+              ChatGPT, Perplexity, Gemini, and Copilot.
+            </p>
+            <p>
+              AI SEO focuses on how clearly your content can be segmented into semantic blocks, how unambiguous those
+              blocks are, and how strongly they align with user intent.
+            </p>
+          </div>
+          <div>
+            <div class="card">
+              <h3>Related guide</h3>
+              <p>
+                Learn how LLMs actually read your pages in the
+                <a href="/llm-seo">LLM SEO guide</a>.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 6 — WHY AI SEO MATTERS -->
+      <section id="ai-seo-why-it-matters">
+        <h2>Why AI SEO matters</h2>
+
+        <div class="card-grid">
+          <div class="card">
+            <h3>AI search is everywhere</h3>
+            <p>
+              Chat-based tools answer more questions every month, and AI Overviews are becoming a regular part of search
+              results. Your content is competing to be the material these systems draw from.
+            </p>
+          </div>
+          <div class="card">
+            <h3>It behaves differently</h3>
+            <p>
+              AI search expands queries into many sub-questions and synthesizes answers. It prefers structured,
+              well-defined content to long, undifferentiated text.
+            </p>
+          </div>
+          <div class="card">
+            <h3>It impacts revenue</h3>
+            <p>
+              When your content appears in AI answers, users often arrive warm and high-intent. AI referrals can convert
+              better than generic SERP clicks if your page matches the question well.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 7 — HOW AI SEARCH WORKS -->
+      <section id="ai-seo-how-it-works">
+        <h2>How AI search works (high level)</h2>
+
+        <div class="qa-two-col">
+          <div>
+            <p>
+              AI search engines powered by LLMs do not read pages word by word. They break your page into conceptual
+              units, evaluate those units, and then pick the ones that best answer the user’s hidden sub-questions.
+            </p>
+            <ol>
+              <li>Segment the page into semantic blocks</li>
+              <li>Extract definitions, explanations, and examples</li>
+              <li>Evaluate clarity and trust for each block</li>
+              <li>Select the strongest blocks for the fanout sub-questions</li>
+              <li>Combine them into a generative answer</li>
+              <li>Cite sources when appropriate</li>
+            </ol>
+            <p>
+              AI SEO is about making each of those blocks easy to understand and safe to reuse.
+            </p>
+          </div>
+
+          <div>
+            <figure class="qa-figure">
+              <img src="/assets/ai-seo-how-it-works-diagram.png" alt="Diagram showing semantic blocks flowing into an LLM decision layer and then into AI-generated answers">
+              <figcaption>
+                AI SEO helps the LLM recognize your page as a clear, trustworthy source of semantic blocks.
+              </figcaption>
+            </figure>
+            <p>
+              Learn more in the <a href="/llm-seo">LLM SEO deep dive</a>.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 8 — FOUR PILLARS -->
+      <section id="ai-seo-pillars">
+        <h2>The four pillars of AI SEO</h2>
+        <p>These pillars help both humans and models understand and trust your content.</p>
+
+        <div class="card-grid">
+          <div class="card">
+            <h3>1. Structure</h3>
+            <p>Organize content into semantic blocks with clear headings, definitions, and FAQs.</p>
+          </div>
+          <div class="card">
+            <h3>2. Clarity</h3>
+            <p>Lead with direct answers and avoid vague phrasing. Clear language reduces misinterpretation.</p>
+          </div>
+          <div class="card">
+            <h3>3. Authority</h3>
+            <p>Show depth in your niche and maintain a consistent topic focus so models learn to trust your brand.</p>
+          </div>
+          <div class="card">
+            <h3>4. Experience</h3>
+            <p>Include examples, results, and observed patterns that show you have done the work.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 9 — SEMANTIC BLOCKS INTRO -->
+      <section id="ai-seo-semantic-blocks">
+        <h2>Semantic blocks: how LLMs see your content</h2>
+
+        <div class="qa-two-col">
+          <div>
+            <p>
+              A semantic block is a small, focused unit of content that answers one clear idea. It might be a definition,
+              a short explanation, or a compact example. LLMs often reuse these blocks directly in answers.
+            </p>
+            <p>
+              When you design pages as a series of semantic blocks instead of a long stream of text, you make it much
+              easier for AI systems to extract and trust the right pieces.
+            </p>
+            <p>
+              This guide itself is written in a block-based style so you can see the pattern in action.
+            </p>
+          </div>
+          <div>
+            <div class="card">
+              <h3>Go deeper</h3>
+              <p>
+                See block types, patterns, and full examples in the
+                <a href="/semantic-blocks">Semantic Blocks guide</a>.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 10 — AI VISIBILITY & GEO -->
+      <section id="ai-seo-visibility-geo">
+        <h2>AI visibility and GEO</h2>
+
+        <div class="qa-two-col">
+          <div>
+            <h3>What is AI visibility?</h3>
+            <p>
+              AI visibility is how often and where your brand or content is used, cited, or paraphrased inside AI-generated
+              answers across engines like ChatGPT, Perplexity, Gemini, and Copilot.
+            </p>
+
+            <h3>What is GEO?</h3>
+            <p>
+              Generative engine optimization (GEO) extends SEO into the generative layer. Instead of asking “Do we rank?”,
+              you ask “Are we being used as answer material for the topics we care about?”
+            </p>
+
+            <h3>Simple manual checks</h3>
+            <ul>
+              <li>Ask the same question in multiple AI engines</li>
+              <li>Regenerate answers several times per engine</li>
+              <li>Track citations, mentions, and terminology reuse</li>
+              <li>Note topics where you appear often vs rarely</li>
+            </ul>
+          </div>
+          <div>
+            <figure class="qa-figure">
+              <img src="/assets/ai-visibility-chart-placeholder.png" alt="Line chart showing AI visibility trends across several AI engines over time">
+              <figcaption>
+                Track how often AI engines use your content over time to measure AI visibility.
+              </figcaption>
+            </figure>
+            <p>
+              Full workflow: <a href="/ai-visibility">AI visibility &amp; GEO tracking guide</a>.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 11 — FANOUT QUERIES -->
+      <section id="ai-seo-fanout">
+        <h2>Fanout queries: how AI expands intent</h2>
+
+        <div class="qa-two-col">
+          <div>
+            <p>
+              When someone types a short query like “AI SEO”, the AI system quietly expands it into a set of sub-questions.
+              This expansion is called fanout.
+            </p>
+            <p>For example, “AI SEO” might expand into:</p>
+            <ul>
+              <li>What is AI SEO?</li>
+              <li>How is AI SEO different from traditional SEO?</li>
+              <li>How do I structure content for AI Overviews?</li>
+              <li>How do semantic blocks and fanout work together?</li>
+              <li>How can I measure AI visibility and Arc Rank?</li>
+            </ul>
+            <p>
+              The more of these sub-questions your page answers clearly, the more likely you are to be selected.
+            </p>
+          </div>
+          <div>
+            <div class="card">
+              <h3>See the full fanout model</h3>
+              <p>
+                Learn how to map and cover fanout sub-intents in the
+                <a href="/fanout-queries">Fanout Queries guide</a>.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 12 — TRI-LAYER MODEL -->
+      <section id="ai-seo-tri-layer">
+        <h2>How AI SEO, LLM SEO, and traditional SEO fit together</h2>
+
+        <div class="qa-two-col">
+          <div>
+            <p>
+              Modern visibility is a stack. Traditional SEO, AI SEO, and LLM SEO each play a role in how users discover
+              and trust your content.
+            </p>
+            <ul>
+              <li><strong>Traditional SEO</strong> focuses on rankings and clicks in classic SERPs.</li>
+              <li><strong>AI SEO</strong> focuses on appearing in AI Overviews and generative answers.</li>
+              <li><strong>LLM SEO</strong> focuses on how models understand your content at the block level.</li>
+              <li><strong>AI visibility</strong> shows whether models are actually using your content in answers.</li>
+            </ul>
+          </div>
+          <div>
+            <figure class="qa-figure">
+              <img src="/assets/tri-layer-model-diagram.png" alt="Stacked diagram showing traditional SEO at the base, AI SEO in the middle, LLM SEO above, and AI visibility as the output layer">
+              <figcaption>
+                Traditional SEO, AI SEO, and LLM SEO work together to drive both rankings and generative visibility.
+              </figcaption>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 13 — QUICK WINS -->
+      <section id="ai-seo-quick-wins">
+        <h2>Quick wins for AI SEO</h2>
+        <p>Apply these changes to any key page to make it more AI-ready.</p>
+
+        <div class="card-grid">
+          <div class="card">
+            <h3>Add a summary block</h3>
+            <p>Open with a short summary that explains what the page covers, who it is for, and the main outcomes.</p>
+          </div>
+          <div class="card">
+            <h3>Define key concepts</h3>
+            <p>Include a compact definitions section for AI SEO, LLM SEO, GEO, semantic blocks, and fanout queries.</p>
+          </div>
+          <div class="card">
+            <h3>Clarify page purpose</h3>
+            <p>State clearly what the page is about and when it should be used. Remove vague or generic phrasing.</p>
+          </div>
+          <div class="card">
+            <h3>Break up long text</h3>
+            <p>Use short paragraphs, lists, and headings so humans and models can scan quickly.</p>
+          </div>
+          <div class="card">
+            <h3>Add a small FAQ</h3>
+            <p>Include 5–7 questions and answers that map to real user queries on your topic.</p>
+          </div>
+          <div class="card">
+            <h3>Keep content visible</h3>
+            <p>Render key explanations in static HTML and avoid hiding them behind JavaScript-only components.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 14 — BEFORE & AFTER -->
+      <section id="ai-seo-before-after">
+        <h2>Before and after: turning a long article into AI-ready content</h2>
+
+        <div class="card-grid">
+          <div class="card">
+            <h3>Before: traditional SEO-only page</h3>
+            <ul>
+              <li>One long article about “AI SEO”</li>
+              <li>Few headings and no clear definitions</li>
+              <li>Multiple topics mixed in one stream</li>
+              <li>Key information buried in long paragraphs</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>After: AI-optimized page</h3>
+            <ul>
+              <li>Clear summary and definitions near the top</li>
+              <li>Content split into semantic blocks with focused headings</li>
+              <li>Dedicated sections for pillars, visibility, and fanout</li>
+              <li>FAQ block at the end with direct answers</li>
+            </ul>
+          </div>
+        </div>
+
+        <figure class="qa-figure">
+          <img src="/assets/ai-seo-before-after-diagram.png" alt="Side-by-side visual comparison of an unstructured article and a page built from clear semantic blocks">
+          <figcaption>
+            Restructuring the same content into semantic blocks makes it easier for LLMs to reuse safely.
+          </figcaption>
+        </figure>
+      </section>
+
+      <!-- SECTION 15 — MAIN FAQ -->
+      <section id="ai-seo-faq">
+        <h2>AI SEO FAQ</h2>
+
+        <div class="card-grid faq-grid">
+          <div class="card">
+            <strong>What is AI SEO?</strong>
+            <p>
+              AI SEO is the practice of structuring and expressing content so AI search engines and LLMs can reliably
+              interpret, extract, and reuse it inside AI-generated answers and AI Overviews.
+            </p>
+          </div>
+          <div class="card">
+            <strong>Is AI SEO replacing traditional SEO?</strong>
+            <p>
+              No. Traditional SEO is still essential for rankings and organic traffic. AI SEO adds a new layer focused
+              on generative answers and citations.
+            </p>
+          </div>
+          <div class="card">
+            <strong>How do I appear in ChatGPT or Perplexity answers?</strong>
+            <p>
+              Your pages need clear structure, strong definitions, and focused sections that match real sub-questions
+              on your topic. LLMs are more likely to select content that is easy to segment and understand.
+            </p>
+          </div>
+          <div class="card">
+            <strong>Do I still need structured data?</strong>
+            <p>
+              Structured data remains useful for classic SERP features. For generative answers, models mainly rely on
+              textual clarity, semantic blocks, and canonical clarity.
+            </p>
+          </div>
+          <div class="card">
+            <strong>How do LLMs choose sources?</strong>
+            <p>
+              They look for blocks that are precise, unambiguous, and trustworthy for the user’s intent. Consistent
+              topic focus and strong explanations help your brand become a reliable source.
+            </p>
+          </div>
+          <div class="card">
+            <strong>Is AI visibility guaranteed if I follow these steps?</strong>
+            <p>
+              No. Generative systems are probabilistic and can change over time. These practices increase your chances
+              of being selected but do not guarantee specific rankings or citations.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 16 — CONCLUSION & NEXT STEPS -->
+      <section id="ai-seo-conclusion">
+        <h2>Where to go from here</h2>
+
+        <div class="qa-two-col">
+          <div>
+            <p>
+              AI search is shifting discovery from simple rankings to generative answers. The brands that win are those
+              whose content is easy for both humans and models to understand and reuse.
+            </p>
+            <p>
+              By using semantic blocks, clear definitions, focused sections, and meaningful examples, you make your pages
+              more attractive to AI systems and more helpful to readers.
+            </p>
+          </div>
+          <div>
+            <div class="card">
+              <h3>Next steps</h3>
+              <ul>
+                <li><a href="/arc-rank-check">Run an Arc Rank check on a key page</a></li>
+                <li><a href="/semantic-blocks">Refactor one article into semantic blocks</a></li>
+                <li><a href="/ai-visibility">Do a manual AI visibility check for your brand</a></li>
+                <li><a href="/training">Join an AI SEO training session</a></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 17 — AUTHOR / BRAND BLOCK -->
+      <section id="ai-seo-author">
+        <h2>Built by QueryArc</h2>
+
+        <div class="card-grid">
+          <div class="card">
+            <h3>Who we are</h3>
+            <p>
+              QueryArc is an AI search optimization platform focused on semantic blocks, fanout queries, Arc Rank, and
+              AI visibility. We help teams understand how LLMs read their content and how to improve their AI readiness.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Author &amp; testing</h3>
+            <p>
+              <strong>Author Name</strong><br>
+              AI SEO Strategist, QueryArc
+            </p>
+            <p>
+              The patterns in this guide come from repeated tests across multiple AI engines, comparing traditional SEO
+              layouts with AI-optimized structures. They describe what we typically observe, not guaranteed outcomes.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 18 — CORE RESOURCES GRID -->
+      <section id="ai-seo-resources">
+        <h2>Core AI SEO resources</h2>
+        <p>Use these pages together as your AI search optimization cluster.</p>
+
+        <div class="card-grid">
+          <div class="card">
+            <h3><a href="/ai-seo">AI SEO</a></h3>
+            <p>The canonical guide to AI search optimization and generative visibility.</p>
+          </div>
+          <div class="card">
+            <h3><a href="/llm-seo">LLM SEO</a></h3>
+            <p>How large language models parse, segment, and understand your pages.</p>
+          </div>
+          <div class="card">
+            <h3><a href="/semantic-blocks">Semantic blocks</a></h3>
+            <p>Design patterns for AI-readable content structures and block-level clarity.</p>
+          </div>
+          <div class="card">
+            <h3><a href="/fanout-queries">Fanout queries</a></h3>
+            <p>How AI search decomposes user intent into sub-questions and coverage areas.</p>
+          </div>
+          <div class="card">
+            <h3><a href="/arc-rank">Arc Rank</a></h3>
+            <p>The AI readiness scoring framework for structure, clarity, and experience.</p>
+          </div>
+          <div class="card">
+            <h3><a href="/ai-visibility">AI visibility &amp; GEO</a></h3>
+            <p>How to measure where and how often your content appears in AI answers.</p>
+          </div>
+          <div class="card">
+            <h3><a href="/training">Training hub</a></h3>
+            <p>Workshops and lessons to help your team adopt AI SEO and LLM SEO in practice.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 19 — ADVANCED SECTION (ACCORDIONS) -->
+      <section id="ai-seo-advanced">
+        <h2>Advanced AI SEO blueprint (for implementers)</h2>
+        <p>
+          The sections below are for practitioners who are designing AI SEO frameworks, documentation systems,
+          and scoring models in depth.
+        </p>
+
+        <!-- ADVANCED BLUEPRINT ACCORDION -->
+        <details class="qa-accordion">
+          <summary>Advanced AI SEO implementation blueprint</summary>
+          <div class="qa-accordion-body">
+            <h3>Page-level semantic block map</h3>
+            <p>
+              Outline how this page breaks into semantic blocks (summary, definitions, pillars, visibility, fanout,
+              tri-layer, quick wins, FAQ, conclusion, author, resources). Each block should answer one clear intent.
+            </p>
+
+            <h3>Tail pattern and interpretive flow</h3>
+            <p>
+              Describe how the tail section (FAQ, conclusion, brand signature) works as an AI visibility and trust layer,
+              and how models are expected to read it from top to bottom.
+            </p>
+
+            <h3>Detailed before/after structures</h3>
+            <p>
+              Document the full transformation from a traditional article to a semantic-block layout, including headings,
+              definitions, FAQs, and internal links.
+            </p>
+
+            <h3>Canonical resource cluster rules</h3>
+            <p>
+              Define how /ai-seo, /llm-seo, /semantic-blocks, /fanout-queries, /arc-rank, /ai-visibility, and /training
+              work together as a single AI SEO cluster with consistent terminology and internal linking.
+            </p>
+
+            <h3>Manual AI visibility framework</h3>
+            <p>
+              Add your full workflow for prompts, regeneration counts, logging, and scoring so you can repeat tests
+              over time and by topic.
+            </p>
+
+            <h3>EEAT and AI-EEAT considerations</h3>
+            <p>
+              Specify how you show experience, expertise, and brand-level stability across the cluster, and how that ties
+              into any Arc Rank-style scoring.
+            </p>
+          </div>
+        </details>
+
+        <!-- QA + ARC RANK CHECKLIST ACCORDION -->
+        <details class="qa-accordion">
+          <summary>Internal QA checklist &amp; Arc Rank review</summary>
+          <div class="qa-accordion-body">
+            <h3>Structural checks</h3>
+            <ul>
+              <li>Is there a clear summary block at the top?</li>
+              <li>Are the main concepts defined once, in a compact definitions block?</li>
+              <li>Does each pillar section focus on a single idea?</li>
+              <li>Are implementation steps concrete and easy to paraphrase?</li>
+            </ul>
+
+            <h3>Clarity checks</h3>
+            <ul>
+              <li>Are claims framed as patterns or observations, not guarantees?</li>
+              <li>Do bullets express one idea each?</li>
+              <li>Are technical terms explained where needed?</li>
+            </ul>
+
+            <h3>EEAT checks</h3>
+            <ul>
+              <li>Is the author and brand identity clear?</li>
+              <li>Are experience statements based on real testing?</li>
+              <li>Is the methodology described without implying secret access to AI systems?</li>
+            </ul>
+
+            <h3>Cluster and AISO checks</h3>
+            <ul>
+              <li>Do all internal links match actual slugs and anchors?</li>
+              <li>Is the AI SEO cluster consistent in terminology and scope?</li>
+              <li>Are FAQ questions implemented as real Q&amp;A tiles in HTML?</li>
+              <li>Are diagrams wrapped in <code>&lt;figure&gt;</code> and <code>&lt;figcaption&gt;</code> with alt text?</li>
+            </ul>
+          </div>
+        </details>
+      </section>
+
+    </div><!-- /.qa-main -->
+  </div><!-- /.qa-layout -->
+
+</main>
+
+<footer>
+  <div class="footer-inner">
+
+    <div class="footer-logo">
+      <img src="queryarc-logo.svg" alt="QueryArc logo">
+    </div>
+
+    <p class="footer-tagline">Built for AI Search Optimization</p>
+
+    <p class="footer-links">
+      <a href="/ai-seo">AI SEO Hub</a>
+      ·
+      <a href="/training">Training</a>
+      ·
+      <a href="/arc-rank">Arc Rank</a>
+    </p>
+
+    <p class="footer-copy">© 2025 QueryArc. All rights reserved.</p>
+
+  </div>
+</footer>
+
+</body>
+</html>

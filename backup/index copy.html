@@ -1,0 +1,1419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>QueryArc – Arc Rank Report (AI Search Readiness)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- ApexCharts -->
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+
+  <!-- AOS -->
+  <link rel="stylesheet" href="https://unpkg.com/aos@2.3.4/dist/aos.css" />
+  <script src="https://unpkg.com/aos@2.3.4/dist/aos.js"></script>
+
+  <style>
+    :root { color-scheme: light; }
+
+    body {
+      background: radial-gradient(circle at top left, #e0edff 0, #f9fafb 40%, #f3f4f6 100%);
+    }
+
+    .card {
+      background-color: #ffffff;
+      border-radius: 1rem;
+      box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+      border: 1px solid #e5e7eb;
+    }
+
+    .pill { display:inline-flex; align-items:center; border-radius:9999px;
+      padding:0.25rem 0.75rem; font-size:0.75rem; font-weight:500; border:1px solid transparent; }
+
+    .pill-good { background:#ecfdf3; color:#047857; border-color:#a7f3d0; }
+    .pill-warn { background:#fffbeb; color:#92400e; border-color:#fed7aa; }
+    .pill-bad  { background:#fef2f2; color:#b91c1c; border-color:#fecaca; }
+    .pill-neutral { background:#f9fafb; color:#374151; border-color:#e5e7eb; }
+
+    .score-bar-track { height:0.5rem; background:#e5e7eb; border-radius:9999px; overflow:hidden; }
+    .score-bar-fill { height:0.5rem; background:#2563eb; border-radius:9999px; }
+
+    .badge-tech { font-size:11px; letter-spacing:0.08em; color:#9ca3af; font-weight:600; text-transform:uppercase; }
+
+    .section-title { font-size:1rem; font-weight:600; color:#0f172a; display:flex; align-items:center; gap:0.5rem; }
+    .section-subtitle { font-size:0.75rem; color:#6b7280; }
+
+    .copy-box {
+      background:#f8fafc; border:1px solid #e5e7eb; border-radius:0.75rem;
+      padding:1rem; font-size:0.875rem; color:#0f172a; white-space:pre-line;
+    }
+
+    .table-header { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:#6b7280; }
+    .table-cell { font-size:0.875rem; color:#111827; }
+
+    .accordion-body { margin-top:0.75rem; font-size:0.875rem; color:#374151; }
+    .accordion-trigger {
+      display:flex; justify-content:space-between; align-items:center;
+      width:100%; font-size:0.875rem; font-weight:500; color:#111827;
+      padding:0.5rem 0; background:transparent; border:none; cursor:pointer;
+    }
+    .accordion-icon { font-size:0.75rem; color:#9ca3af; }
+    .analyzing-loader {
+  position: relative;
+  width: 48px;
+  height: 48px;
+}
+
+.pulse-core {
+  width: 16px;
+  height: 16px;
+  background: #3b82f6;
+  border-radius: 9999px;
+  position: absolute;
+  top: 16px;
+  left: 16px;
+}
+
+.pulse-ring {
+  position: absolute;
+  width: 48px;
+  height: 48px;
+  border: 3px solid #93c5fd;
+  border-radius: 9999px;
+  animation: pulse-ring 1.8s infinite ease-out;
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.6); opacity: 1; }
+  100% { transform: scale(1.4); opacity: 0; }
+}
+
+/* Shimmer effect */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    #f3f4f6 0%,
+    #e5e7eb 50%,
+    #f3f4f6 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+    /* Skeleton loading state */
+  .skeleton {
+    position: relative;
+    overflow: hidden;
+    background: #f3f4f6;
+  }
+
+  .skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      rgba(248, 250, 252, 0) 0%,
+      rgba(226, 232, 240, 0.9) 50%,
+      rgba(248, 250, 252, 0) 100%
+    );
+    animation: shimmer 1.4s infinite;
+    transform: translateX(-100%);
+  }
+
+  @keyframes shimmer {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
+  .skeleton-bar {
+    height: 0.75rem;
+    border-radius: 9999px;
+    background: #e5e7eb;
+  }
+
+  .skeleton-chip {
+    height: 1.4rem;
+    border-radius: 9999px;
+    background: #e5e7eb;
+    width: 5rem;
+  }
+  </style>
+</head>
+
+<body class="min-h-screen text-slate-900">
+  <div class="min-h-screen flex flex-col">
+
+    <!-- HEADER -->
+   <header class="w-full border-b border-slate-200 bg-white/80 backdrop-blur-sm">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
+
+    <!-- Brand -->
+  <div class="flex items-center gap-3">
+  <img
+    src="/static/queryarc-logo.svg"
+    alt="QueryArc logo"
+    class="h-8 sm:h-9 lg:h-10 w-auto"
+  />
+</div>
+
+    <!-- Nav -->
+    <nav class="flex items-center gap-4 text-xs sm:text-sm">
+      <button class="text-slate-500 hover:text-slate-900 transition">
+        What is Arc Rank?
+      </button>
+      <button id="sample-btn" class="text-slate-500 hover:text-slate-900 transition">
+        See sample report
+      </button>
+    </nav>
+
+  </div>
+</header>
+
+
+
+    <!-- MAIN -->
+    <main class="flex-1">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+        <!-- INPUT SECTION -->
+        <section class="grid lg:grid-cols-[3fr,2fr] gap-6 items-start">
+
+          <!-- LEFT: URL INPUT -->
+          <div class="card p-6 sm:p-7" data-aos="fade-up">
+            <h1 class="text-xl sm:text-2xl font-semibold text-slate-900">
+              Run an Arc Rank report on any page
+            </h1>
+            <p class="mt-1 text-sm text-slate-600">
+              QueryArc shows you how AI tools like ChatGPT and Gemini understand your page.
+              Paste a URL to see your Arc Rank score and a simple checklist of fixes.
+            </p>
+
+            <!-- INPUT FIELD -->
+            <div class="mt-5">
+              <label for="url-input" class="block text-xs font-medium text-slate-600 mb-1">
+                Page URL
+              </label>
+
+              <div class="flex flex-col sm:flex-row gap-2">
+                <div class="relative flex-1">
+                  <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 text-sm">🌐</span>
+                  <input
+                    id="url-input"
+                    type="text"
+                    placeholder="https://example.com/your-page"
+                    class="w-full border border-slate-300 rounded-xl py-2.5 pl-9 pr-3 text-sm bg-white
+                      focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <button
+                  id="analyze-btn"
+                  class="inline-flex items-center justify-center rounded-xl bg-blue-600 text-white text-sm
+                     font-medium px-4 py-2.5 hover:bg-blue-700 transition shadow-sm"
+                >
+                  Run Arc Rank Analysis
+                </button>
+              </div>
+
+              <div class="mt-2 text-xs text-slate-500" id="status-text">
+                We start only when you enter a valid URL.
+              </div>
+
+              <div id="loading-indicator" class="hidden mt-6">
+  <div class="card p-6 sm:p-7 bg-white shadow-lg rounded-2xl border border-slate-200">
+    
+    <p class="badge-tech mb-2 text-blue-600">Analyzing your page…</p>
+
+    <h2 class="text-lg font-semibold text-slate-900 mb-1">
+      AI is reading your content and building your Arc Rank report
+    </h2>
+
+    <p class="text-xs text-slate-500 mb-4">
+      Step 1: Fetching your page · Step 2: Letting the LLM read it · Step 3: Assembling scores and fixes.
+    </p>
+
+    <div class="flex items-center justify-between">
+      <!-- Left side shimmer -->
+      <div class="w-2/3 space-y-4">
+        <div class="shimmer h-4 w-4/5 rounded-md"></div>
+        <div class="shimmer h-4 w-3/5 rounded-md"></div>
+        <div class="shimmer h-20 w-full rounded-xl"></div>
+      </div>
+
+      <!-- Right side pulse loader -->
+      <div class="flex flex-col items-center">
+        <div class="analyzing-loader mb-2">
+          <div class="pulse-ring"></div>
+          <div class="pulse-core"></div>
+        </div>
+        <p class="text-xs text-slate-500">This usually takes a few seconds.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+            <!-- SAMPLE BUTTONS -->
+            <div class="mt-4 flex flex-wrap gap-2 text-xs">
+              <span class="text-slate-500">Try samples:</span>
+
+              <button
+                data-sample="https://example.com"
+                class="px-3 py-1.5 rounded-full border border-slate-200 text-slate-600 hover:text-blue-600 hover:border-blue-500 transition">
+                Sample article
+              </button>
+
+              <button
+                data-sample="https://example.com/product"
+                class="px-3 py-1.5 rounded-full border border-slate-200 text-slate-600 hover:text-blue-600 hover:border-blue-500 transition">
+                Sample product page
+              </button>
+            </div>
+
+            <p class="mt-4 text-[11px] text-slate-400">
+              Powered by the QueryArc Arc Rank Engine.
+            </p>
+          </div>
+
+          <!-- RIGHT: WHAT USER GETS -->
+          <div class="card p-6 sm:p-7" data-aos="fade-up" data-aos-delay="80">
+            <h2 class="text-sm font-semibold text-slate-900 mb-3">What this report gives you</h2>
+
+            <div class="space-y-3">
+
+              <div class="flex gap-3">
+                <div class="h-8 w-8 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 text-lg">🎯</div>
+                <div>
+                  <p class="text-sm font-medium text-slate-900">Your Arc Rank score</p>
+                  <p class="text-xs text-slate-500">
+                    A single score that shows how “AI-ready” your page is, plus a clear verdict.
+                  </p>
+                </div>
+              </div>
+
+              <div class="flex gap-3">
+                <div class="h-8 w-8 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 text-lg">🧠</div>
+                <div>
+                  <p class="text-sm font-medium text-slate-900">How AI interprets your page</p>
+                  <p class="text-xs text-slate-500">
+                    What AI sees as the topic, intent, claims, and missing explanations.
+                  </p>
+                </div>
+              </div>
+
+              <div class="flex gap-3">
+                <div class="h-8 w-8 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 text-lg">🛠️</div>
+                <div>
+                  <p class="text-sm font-medium text-slate-900">Copy-paste improvements</p>
+                  <p class="text-xs text-slate-500">
+                    Summary, definitions, FAQ, and a 30-day roadmap you can use immediately.
+                  </p>
+                </div>
+              </div>
+
+            </div>
+
+            <p class="mt-4 text-[11px] text-slate-400">
+              Just paste a URL → get a full Arc Rank dashboard.
+            </p>
+          </div>
+
+        </section>
+
+        <!-- REPORT (unchanged design, only updated copy) -->
+        <!-- >>> The entire report container stays the same below this line <<< -->
+        <!-- I kept all content identical except revised section titles & subtitles -->
+
+
+        <!-- REPORT DASHBOARD -->
+        <section id="report-container" class="hidden space-y-6 pb-12">
+
+          <!-- Section row: hero + how to use -->
+          <div class="grid lg:grid-cols-[2fr,1fr] gap-6">
+            <!-- Hero score card -->
+            <div class="card p-6 sm:p-7" data-aos="fade-up">
+              <div class="flex items-start justify-between gap-4">
+                <div>
+                  <h2 class="section-title">
+                    <span>AI readiness at a glance</span>
+                  </h2>
+                  <p class="section-subtitle">
+                    How well AI systems can understand, trust, and reuse this page.
+                  </p>
+                </div>
+                <span id="verdict-pill" class="pill pill-neutral text-xs">Verdict: —</span>
+              </div>
+
+              <div class="mt-5 grid sm:grid-cols-[1.2fr,1.8fr] gap-6 items-center">
+                <!-- Gauge -->
+                <div class="flex flex-col items-center justify-center">
+                  <div id="hero-score-chart" class="w-full max-w-[220px]"></div>
+                  <div class="mt-1 text-[11px] text-slate-500">
+                    Overall LLM-readiness score
+                  </div>
+                </div>
+
+                <!-- Details -->
+                <div class="space-y-4">
+                  <div>
+                    <p class="text-sm text-slate-500">
+                      Page:
+                      <span id="page-url" class="font-mono text-[11px] break-all text-slate-700"></span>
+                    </p>
+                    <p class="mt-1 text-xs text-slate-500">
+                      Word count: <span id="word-count">—</span> · Language:
+                      <span id="lang-code">—</span>
+                    </p>
+                    <p class="mt-1 text-xs text-slate-500">
+                      Last crawled: <span id="last-crawled">—</span>
+                    </p>
+                  </div>
+
+                  <div>
+                    <p class="text-xs font-semibold text-slate-700">
+                      Main issue detected
+                    </p>
+                    <p id="main-issue-text" class="text-sm text-slate-700 mt-1">
+                      —
+                    </p>
+                  </div>
+
+                  <div>
+                    <p class="text-xs font-semibold text-slate-700 mb-2">
+                      AI optimization trio
+                      <span class="badge-tech ml-2">AIO / AEO / GEO</span>
+                    </p>
+                    <div class="grid grid-cols-3 gap-2 text-xs">
+                      <div class="rounded-xl bg-slate-50 px-3 py-2">
+                        <div class="text-[11px] text-slate-500">AIO</div>
+                        <div class="text-sm font-semibold text-slate-900">
+                          <span id="aio-score">—</span>/10
+                        </div>
+                        <div class="text-[11px] text-slate-400">
+                          Clarity for AI
+                        </div>
+                      </div>
+                      <div class="rounded-xl bg-slate-50 px-3 py-2">
+                        <div class="text-[11px] text-slate-500">AEO</div>
+                        <div class="text-sm font-semibold text-slate-900">
+                          <span id="aeo-score">—</span>/10
+                        </div>
+                        <div class="text-[11px] text-slate-400">
+                          Answers questions
+                        </div>
+                      </div>
+                      <div class="rounded-xl bg-slate-50 px-3 py-2">
+                        <div class="text-[11px] text-slate-500">GEO</div>
+                        <div class="text-sm font-semibold text-slate-900">
+                          <span id="geo-score">—</span>/10
+                        </div>
+                        <div class="text-[11px] text-slate-400">
+                          Depth & coverage
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p class="text-[11px] font-semibold text-slate-500">
+                      Top 3 fixes
+                    </p>
+                    <ul id="top-fixes-list" class="mt-1 text-xs text-slate-700 list-disc pl-4 space-y-1">
+                      <!-- filled by JS -->
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- How to use -->
+            <div class="card p-6 sm:p-7" data-aos="fade-up" data-aos-delay="60">
+              <h2 class="section-title">
+                <span>How to use this report</span>
+              </h2>
+              <p class="section-subtitle">
+                A simple sequence your team can follow.
+              </p>
+              <ol class="mt-4 space-y-3 text-xs text-slate-700">
+                <li>
+                  <span class="font-semibold text-slate-800">1. Read the verdict.</span>
+                  Check if AI currently understands your page or is still “guessing”.
+                </li>
+                <li>
+                  <span class="font-semibold text-slate-800">2. Start with the quick wins.</span>
+                  Fix the Top 3 issues first – they give the biggest lift.
+                </li>
+                <li>
+                  <span class="font-semibold text-slate-800">3. Paste the optimized blocks.</span>
+                  Use the suggested summary, definitions, and FAQ as a starting point.
+                </li>
+                <li>
+                  <span class="font-semibold text-slate-800">4. Follow the 30-day roadmap.</span>
+                  Turn this report into a simple content improvement plan.
+                </li>
+              </ol>
+              <p class="mt-4 text-[11px] text-slate-400">
+                Technical labels like “LLM interpretation” and “fanout queries” are shown as secondary text for
+                advanced users.
+              </p>
+            </div>
+          </div>
+
+          <!-- Row: AI interpretation + Optimized summary -->
+          <div class="grid lg:grid-cols-2 gap-6">
+            <!-- AI interpretation -->
+            <div class="card p-6 sm:p-7" data-aos="fade-up">
+              <h2 class="section-title">
+                <span>How AI understands this page</span>
+              </h2>
+              <p class="section-subtitle">
+                What the model “thinks” your page is about when it reads it.
+                <span class="badge-tech ml-2">LLM Interpretation</span>
+              </p>
+
+              <div class="mt-4 grid sm:grid-cols-3 gap-4 text-xs">
+                <div>
+                  <p class="text-slate-500">Primary topic</p>
+                  <p id="primary-topic" class="mt-1 text-sm font-medium text-slate-900">—</p>
+                </div>
+                <div>
+                  <p class="text-slate-500">Intent</p>
+                  <p id="detected-intent" class="mt-1 text-sm font-medium text-slate-900">—</p>
+                </div>
+                <div>
+                  <p class="text-slate-500">Confidence</p>
+                  <p id="confidence-level" class="mt-1 text-sm font-medium text-slate-900">—</p>
+                </div>
+              </div>
+
+              <div class="mt-4">
+                <p class="text-xs font-semibold text-slate-700">Secondary topics</p>
+                <div id="secondary-topics" class="mt-1 flex flex-wrap gap-1.5 text-[11px]">
+                  <!-- tags -->
+                </div>
+              </div>
+
+              <div class="mt-4">
+                <p class="text-xs font-semibold text-slate-700">AI’s summary of your page</p>
+                <p id="ai-summary" class="mt-1 text-sm text-slate-800">
+                  —
+                </p>
+              </div>
+
+              <div class="mt-4">
+                <p class="text-xs font-semibold text-slate-700">Key claims AI picked up</p>
+                <ul id="key-claims" class="mt-1 text-xs text-slate-800 list-disc pl-4 space-y-1">
+                  <!-- filled -->
+                </ul>
+              </div>
+            </div>
+
+            <!-- Optimized summary -->
+            <div class="card p-6 sm:p-7" data-aos="fade-up" data-aos-delay="50">
+              <h2 class="section-title">
+                <span>Optimized summary for this page</span>
+              </h2>
+              <p class="section-subtitle">
+                Paste this near the top of your page. AI uses it as the “blurb” for what the page is about.
+                <span class="badge-tech ml-2">Summary Block</span>
+              </p>
+
+              <div class="mt-4 text-xs text-slate-600 flex items-center justify-between">
+                <span>Recommended length: ~100–150 words.</span>
+                <span>Summary quality score: <span id="summary-score" class="font-semibold text-slate-800">—</span>/10</span>
+              </div>
+
+              <div id="recommended-summary" class="mt-3 copy-box text-sm">
+                —
+              </div>
+            </div>
+          </div>
+
+          <!-- Row: Issues & scores + Definitions -->
+          <div class="grid lg:grid-cols-2 gap-6">
+            <!-- Issues & score matrix -->
+            <div class="card p-6 sm:p-7" data-aos="fade-up">
+              <h2 class="section-title">
+                <span>What’s confusing or missing for AI</span>
+              </h2>
+              <p class="section-subtitle">
+                Simple explanation of what AI struggled with – plus per-area scores.
+              </p>
+
+              <div class="mt-4">
+                <p class="text-xs font-semibold text-slate-700 mb-1">
+                  Issues in plain language
+                </p>
+                <ul id="issues-list" class="text-xs text-slate-800 list-disc pl-4 space-y-1">
+                  <!-- filled -->
+                </ul>
+              </div>
+
+              <div class="mt-5">
+                <p class="text-xs font-semibold text-slate-700 mb-2">
+                  Score breakdown by element
+                  <span class="badge-tech ml-2">LLM-SEO Score Matrix</span>
+                </p>
+                <div id="score-bars" class="space-y-2">
+                  <!-- bars filled by JS -->
+                </div>
+              </div>
+
+              <div class="mt-4">
+                <div id="score-matrix-chart" class="w-full h-48"></div>
+              </div>
+            </div>
+
+            <!-- Definitions -->
+            <div class="card p-6 sm:p-7" data-aos="fade-up" data-aos-delay="50">
+              <h2 class="section-title">
+                <span>Definitions for key concepts</span>
+              </h2>
+              <p class="section-subtitle">
+                Explain important terms the first time you use them. AI then reasons much more reliably.
+                <span class="badge-tech ml-2">Definitions Block</span>
+              </p>
+
+              <p class="mt-3 text-xs text-slate-600">
+                Add these near the first mention of each term on your page.
+              </p>
+
+              <ul id="definitions-list" class="mt-3 space-y-2 text-sm text-slate-800">
+                <!-- li entries -->
+              </ul>
+
+              <p class="mt-4 text-[11px] text-slate-400">
+                Missing critical terms:
+                <span id="missing-terms" class="text-slate-600">—</span>
+              </p>
+            </div>
+          </div>
+
+          <!-- Row: Fanout + FAQ -->
+          <div class="grid lg:grid-cols-2 gap-6">
+            <!-- Fanout queries -->
+            <div class="card p-6 sm:p-7" data-aos="fade-up">
+              <h2 class="section-title">
+                <span>Questions AI tests your page against</span>
+              </h2>
+              <p class="section-subtitle">
+                Real questions users ask – and how well your page answers them.
+                <span class="badge-tech ml-2">Fanout Query Analysis</span>
+              </p>
+
+              <div class="mt-4 text-xs text-slate-600">
+                Coverage score: <span id="fanout-score" class="font-semibold text-slate-900">—</span>/10
+              </div>
+
+              <div class="mt-3 overflow-x-auto">
+                <table class="min-w-full text-left border-separate border-spacing-y-1">
+                  <thead>
+                    <tr>
+                      <th class="table-header pr-4">Question AI tested</th>
+                      <th class="table-header pr-4">Match</th>
+                      <th class="table-header">Note</th>
+                    </tr>
+                  </thead>
+                  <tbody id="fanout-table-body">
+                    <!-- rows -->
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="mt-3">
+                <p class="text-xs font-semibold text-slate-700">Main gaps</p>
+                <ul id="fanout-gaps" class="mt-1 text-xs text-slate-800 list-disc pl-4 space-y-1">
+                  <!-- gaps -->
+                </ul>
+              </div>
+            </div>
+
+            <!-- FAQ -->
+            <div class="card p-6 sm:p-7" data-aos="fade-up" data-aos-delay="50">
+              <h2 class="section-title">
+                <span>LLM-ready FAQ suggestions</span>
+              </h2>
+              <p class="section-subtitle">
+                Add a short FAQ so AI can confidently answer common user questions.
+                <span class="badge-tech ml-2">FAQ Block</span>
+              </p>
+
+              <p class="mt-3 text-xs text-slate-600">
+                FAQ score: <span id="faq-score" class="font-semibold text-slate-900">—</span>/10
+              </p>
+
+              <div id="faq-list" class="mt-3 space-y-3 text-sm text-slate-800">
+                <!-- Q&A pairs -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Row: Roadmap + Canonical resources -->
+          <div class="grid lg:grid-cols-2 gap-6">
+            <!-- Roadmap & EEAT -->
+            <div class="card p-6 sm:p-7" data-aos="fade-up">
+              <h2 class="section-title">
+                <span>Your 30-day improvement roadmap</span>
+              </h2>
+              <p class="section-subtitle">
+                A simple plan your content and SEO team can follow.
+              </p>
+
+              <div class="mt-4 grid sm:grid-cols-3 gap-3 text-xs">
+                <div class="rounded-2xl bg-rose-50 border border-rose-100 p-3 flex flex-col gap-1">
+                  <p class="text-[11px] font-semibold text-rose-700 uppercase">
+                    Next 24 hours
+                  </p>
+                  <ul id="fix-24h" class="list-disc pl-4 text-rose-900 space-y-1">
+                    <!-- filled -->
+                  </ul>
+                </div>
+                <div class="rounded-2xl bg-amber-50 border border-amber-100 p-3 flex flex-col gap-1">
+                  <p class="text-[11px] font-semibold text-amber-800 uppercase">
+                    Next 7 days
+                  </p>
+                  <ul id="fix-7d" class="list-disc pl-4 text-amber-900 space-y-1">
+                    <!-- filled -->
+                  </ul>
+                </div>
+                <div class="rounded-2xl bg-emerald-50 border border-emerald-100 p-3 flex flex-col gap-1">
+                  <p class="text-[11px] font-semibold text-emerald-800 uppercase">
+                    Next 30 days
+                  </p>
+                  <ul id="fix-30d" class="list-disc pl-4 text-emerald-900 space-y-1">
+                    <!-- filled -->
+                  </ul>
+                </div>
+              </div>
+
+              <div class="mt-4">
+                <p class="text-xs font-semibold text-slate-700">
+                  Clarity & trust signals
+                  <span class="badge-tech ml-2">Clarity / EEAT</span>
+                </p>
+                <p id="clarity-issues" class="mt-1 text-xs text-slate-800">
+                  <!-- clarity summary -->
+                </p>
+                <p id="eeat-summary" class="mt-2 text-xs text-slate-800">
+                  <!-- EEAT summary -->
+                </p>
+              </div>
+            </div>
+
+            <!-- Canonical resources -->
+            <div class="card p-6 sm:p-7" data-aos="fade-up" data-aos-delay="50">
+              <h2 class="section-title">
+                <span>Canonical resources for this topic</span>
+              </h2>
+              <p class="section-subtitle">
+                Strong internal and external links that help AI place this page in context.
+                <span class="badge-tech ml-2">Canonical Resources Block</span>
+              </p>
+
+              <p class="mt-3 text-xs text-slate-600">
+                Canonical resources score:
+                <span id="canon-score" class="font-semibold text-slate-900">—</span>/10
+              </p>
+
+              <ul id="canon-list" class="mt-3 space-y-2 text-sm text-slate-800">
+                <!-- resources -->
+              </ul>
+
+              <p id="canon-why" class="mt-3 text-[11px] text-slate-500">
+                <!-- why it matters -->
+              </p>
+            </div>
+          </div>
+
+          <!-- Advanced data (collapsible) -->
+          <div class="card p-5 sm:p-6" data-aos="fade-up">
+            <button
+              id="advanced-toggle"
+              class="accordion-trigger"
+              type="button"
+            >
+              <div>
+                <p class="text-sm font-semibold text-slate-900">Advanced data & raw extraction</p>
+                <p class="text-[11px] text-slate-500">
+                  For SEO specialists, analysts, and developers.
+                </p>
+              </div>
+              <span class="accordion-icon" id="advanced-icon">▼</span>
+            </button>
+            <div id="advanced-body" class="accordion-body hidden">
+              <p class="text-[11px] text-slate-500 mb-2">
+                Technical fields: clean_text, html_extracted, token estimate, processing time.
+              </p>
+              <div class="grid lg:grid-cols-3 gap-3 text-xs text-slate-700">
+                <div class="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                  <p class="text-[11px] font-semibold text-slate-500 mb-1">Tokens (approx)</p>
+                  <p id="raw-tokens" class="text-sm font-semibold text-slate-900">—</p>
+                  <p class="mt-1 text-[11px] text-slate-500">Used as a rough size indicator.</p>
+                </div>
+                <div class="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                  <p class="text-[11px] font-semibold text-slate-500 mb-1">Processing time</p>
+                  <p id="raw-time" class="text-sm font-semibold text-slate-900">—</p>
+                  <p class="mt-1 text-[11px] text-slate-500">Includes crawl + extraction + analysis.</p>
+                </div>
+                <div class="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                  <p class="text-[11px] font-semibold text-slate-500 mb-1">Content type</p>
+                  <p id="content-type" class="text-sm font-semibold text-slate-900">—</p>
+                  <p class="mt-1 text-[11px] text-slate-500">Article, product page, homepage, etc.</p>
+                </div>
+              </div>
+
+              <div class="mt-4">
+                <p class="text-[11px] font-semibold text-slate-500 mb-1">Cleaned text (truncated)</p>
+                <pre id="raw-clean-text" class="copy-box text-[11px] max-h-48 overflow-auto whitespace-pre-wrap"></pre>
+              </div>
+
+              <div class="mt-3">
+                <p class="text-[11px] font-semibold text-slate-500 mb-1">HTML snippet (truncated)</p>
+                <pre id="raw-html" class="copy-box text-[11px] max-h-48 overflow-auto whitespace-pre-wrap"></pre>
+              </div>
+            </div>
+          </div>
+        </section>
+        <!-- LOADING SKELETON DASHBOARD -->
+<section id="loading-skeleton" class="hidden space-y-6 pb-12">
+  <div class="card p-6 sm:p-7">
+    <div class="flex items-start justify-between gap-4">
+      <div>
+        <p class="text-xs font-semibold text-blue-600 uppercase tracking-wide">
+          Analyzing your page…
+        </p>
+        <h2 class="mt-1 text-lg sm:text-xl font-semibold text-slate-900">
+          AI is reading your content and building your Arc Rank report
+        </h2>
+        <p class="mt-2 text-xs text-slate-500">
+          Step 1: Fetching your page · Step 2: Letting the LLM read it · Step 3: Assembling scores and fixes.
+        </p>
+      </div>
+      <div class="hidden sm:flex flex-col items-center gap-2">
+        <div class="h-16 w-16 rounded-full border-4 border-blue-100 flex items-center justify-center skeleton">
+          <span class="h-8 w-8 rounded-full bg-blue-500/80"></span>
+        </div>
+        <p class="text-[11px] text-slate-400">This usually takes a few seconds.</p>
+      </div>
+    </div>
+
+    <div class="mt-5 grid sm:grid-cols-[1.2fr,1.8fr] gap-6">
+      <!-- Left: big score placeholder -->
+      <div class="flex flex-col items-center justify-center gap-3">
+        <div class="w-40 h-40 rounded-full skeleton"></div>
+        <p class="text-[11px] text-slate-500">
+          Getting your overall Arc Rank score…
+        </p>
+      </div>
+
+      <!-- Right: skeleton rows -->
+      <div class="space-y-4">
+        <div class="space-y-2">
+          <div class="skeleton skeleton-bar w-3/4"></div>
+          <div class="skeleton skeleton-bar w-2/3"></div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2 text-xs">
+          <div class="rounded-xl p-3 skeleton">
+            <div class="skeleton-bar w-1/3 mb-2"></div>
+            <div class="skeleton-bar w-1/2 mb-1"></div>
+            <div class="skeleton-bar w-2/3"></div>
+          </div>
+          <div class="rounded-xl p-3 skeleton">
+            <div class="skeleton-bar w-1/3 mb-2"></div>
+            <div class="skeleton-bar w-1/2 mb-1"></div>
+            <div class="skeleton-bar w-2/3"></div>
+          </div>
+          <div class="rounded-xl p-3 skeleton">
+            <div class="skeleton-bar w-1/3 mb-2"></div>
+            <div class="skeleton-bar w-1/2 mb-1"></div>
+            <div class="skeleton-bar w-2/3"></div>
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <div class="skeleton-bar skeleton w-full"></div>
+          <div class="skeleton-bar skeleton w-11/12"></div>
+          <div class="skeleton-bar skeleton w-10/12"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Smaller placeholder cards row -->
+  <div class="grid lg:grid-cols-3 gap-4">
+    <div class="card p-4 skeleton">
+      <div class="skeleton-bar w-1/2 mb-3"></div>
+      <div class="space-y-2">
+        <div class="skeleton-bar w-full"></div>
+        <div class="skeleton-bar w-5/6"></div>
+        <div class="skeleton-bar w-2/3"></div>
+      </div>
+    </div>
+    <div class="card p-4 skeleton">
+      <div class="skeleton-bar w-1/2 mb-3"></div>
+      <div class="space-y-2">
+        <div class="skeleton-bar w-full"></div>
+        <div class="skeleton-bar w-4/6"></div>
+        <div class="skeleton-bar w-3/5"></div>
+      </div>
+    </div>
+    <div class="card p-4 skeleton">
+      <div class="skeleton-bar w-1/2 mb-3"></div>
+      <div class="space-y-2">
+        <div class="skeleton-bar w-full"></div>
+        <div class="skeleton-bar w-4/5"></div>
+        <div class="skeleton-bar w-1/2"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const API_BASE = "http://127.0.0.1:8000";
+
+    const urlInput = document.getElementById("url-input");
+    const analyzeBtn = document.getElementById("analyze-btn");
+    const statusText = document.getElementById("status-text");
+    const loadingIndicator = document.getElementById("loading-indicator");
+    const reportContainer = document.getElementById("report-container");
+    const loadingSkeleton = document.getElementById("loading-skeleton");
+    const sampleButtons = document.querySelectorAll("[data-sample]");
+    const sampleBtnTop = document.getElementById("sample-btn");
+    const advancedToggle = document.getElementById("advanced-toggle");
+    const advancedBody = document.getElementById("advanced-body");
+    const advancedIcon = document.getElementById("advanced-icon");
+
+    let heroChart = null;
+    let matrixChart = null;
+
+    function setLoading(isLoading, message) {
+  if (isLoading) {
+    loadingIndicator.classList.remove("hidden");
+    if (message) statusText.textContent = message;
+
+    analyzeBtn.disabled = true;
+    analyzeBtn.classList.add("opacity-60", "cursor-not-allowed");
+
+    // Show skeleton dashboard, hide real report
+    if (loadingSkeleton) loadingSkeleton.classList.remove("hidden");
+    if (reportContainer) reportContainer.classList.add("hidden");
+  } else {
+    loadingIndicator.classList.add("hidden");
+    analyzeBtn.disabled = false;
+    analyzeBtn.classList.remove("opacity-60", "cursor-not-allowed");
+
+    // Hide skeleton; actual report will be shown after renderReport
+    if (loadingSkeleton) loadingSkeleton.classList.add("hidden");
+  }
+}
+
+
+    function setStatus(msg, isError = false) {
+      statusText.textContent = msg || "";
+      statusText.classList.toggle("text-rose-500", !!isError);
+      if (!isError) {
+        statusText.classList.remove("text-rose-500");
+        statusText.classList.add("text-slate-500");
+      } else {
+        statusText.classList.remove("text-slate-500");
+      }
+    }
+
+    async function analyzeUrl(url) {
+      const trimmed = (url || "").trim();
+      if (!trimmed) {
+        setStatus("Please paste a URL before running analysis.", true);
+        return;
+      }
+
+      setStatus("Sending page to AI engine…");
+      setLoading(true, "Analyzing page…");
+
+      try {
+        const res = await fetch(`${API_BASE}/analyze`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: trimmed }),
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.detail || `Request failed: ${res.status}`);
+        }
+
+        const data = await res.json();
+        renderReport(data);
+        reportContainer.classList.remove("hidden");
+        setStatus("Analysis complete. Scroll to view your AI-readiness dashboard.");
+      } catch (err) {
+        console.error(err);
+        setStatus(err.message || "Something went wrong while analyzing.", true);
+        reportContainer.classList.add("hidden");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    function verdictClass(verdict) {
+      if (!verdict) return "pill pill-neutral";
+      const v = verdict.toLowerCase();
+      if (v === "ready") return "pill pill-good";
+      if (v === "partially ready" || v === "needs work") return "pill pill-warn";
+      return "pill pill-bad";
+    }
+
+    function renderHero(pageMeta, execSummary, scoreMatrix) {
+      const verdict = execSummary?.verdict || "—";
+      const score = execSummary?.overall_llm_readiness_score ?? 0;
+
+      const verdictPill = document.getElementById("verdict-pill");
+      verdictPill.textContent = `Verdict: ${verdict}`;
+      verdictPill.className = verdictClass(verdict);
+
+      document.getElementById("page-url").textContent = pageMeta?.url || "—";
+      document.getElementById("word-count").textContent = pageMeta?.word_count ?? "—";
+      document.getElementById("lang-code").textContent = pageMeta?.detected_language || "—";
+      document.getElementById("last-crawled").textContent = pageMeta?.last_crawled || "—";
+
+      document.getElementById("main-issue-text").textContent =
+        execSummary?.main_issue || "No dominant issue detected.";
+
+      // AIO / AEO / GEO mapping
+      const summaryScore = scoreMatrix?.summary_block ?? 0;
+      const faqScore = scoreMatrix?.faq ?? 0;
+      const fanoutScore = scoreMatrix?.fanout_match ?? 0;
+      const clarity = scoreMatrix?.clarity ?? 0;
+
+      const aio = (summaryScore + clarity) / 2 || 0;
+      const aeo = faqScore || 0;
+      const geo = fanoutScore || 0;
+
+      document.getElementById("aio-score").textContent = aio.toFixed(1);
+      document.getElementById("aeo-score").textContent = aeo.toFixed(1);
+      document.getElementById("geo-score").textContent = geo.toFixed(1);
+
+      const topFixesList = document.getElementById("top-fixes-list");
+      topFixesList.innerHTML = "";
+      (execSummary?.top_3_fixes || []).forEach((fix) => {
+        const li = document.createElement("li");
+        li.textContent = fix;
+        topFixesList.appendChild(li);
+      });
+
+      // Hero radial chart
+      const percent = Math.max(0, Math.min(100, Number(score) || 0));
+
+      if (heroChart) {
+        heroChart.updateSeries([percent]);
+      } else {
+        heroChart = new ApexCharts(document.querySelector("#hero-score-chart"), {
+          chart: {
+            type: "radialBar",
+            height: 230,
+            toolbar: { show: false },
+          },
+          series: [percent],
+          plotOptions: {
+            radialBar: {
+              hollow: { size: "60%" },
+              track: { background: "#E5E7EB" },
+              dataLabels: {
+                name: { show: false },
+                value: {
+                  fontSize: "26px",
+                  fontWeight: 700,
+                  color: "#0f172a",
+                  formatter: (val) => `${Math.round(val)}`,
+                },
+              },
+            },
+          },
+          labels: ["Score"],
+          colors: ["#2563EB"],
+        });
+        heroChart.render();
+      }
+    }
+
+    function renderLlmInterpretation(llmInterp) {
+      document.getElementById("primary-topic").textContent =
+        llmInterp?.primary_topic || "—";
+      document.getElementById("detected-intent").textContent =
+        llmInterp?.detected_intent || "—";
+      document.getElementById("confidence-level").textContent =
+        llmInterp?.confidence_level || "—";
+      document.getElementById("ai-summary").textContent =
+        llmInterp?.summary_llm_generated || "—";
+
+      const secTopics = llmInterp?.secondary_topics || [];
+      const secContainer = document.getElementById("secondary-topics");
+      secContainer.innerHTML = "";
+      if (secTopics.length === 0) {
+        const span = document.createElement("span");
+        span.className = "text-[11px] text-slate-500";
+        span.textContent = "No secondary topics detected.";
+        secContainer.appendChild(span);
+      } else {
+        secTopics.forEach((topic) => {
+          const chip = document.createElement("span");
+          chip.className =
+            "inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] text-slate-700";
+          chip.textContent = topic;
+          secContainer.appendChild(chip);
+        });
+      }
+
+      const claims = llmInterp?.key_claims_llm_detected || [];
+      const claimsList = document.getElementById("key-claims");
+      claimsList.innerHTML = "";
+      if (claims.length === 0) {
+        const li = document.createElement("li");
+        li.textContent = "No strong claims detected.";
+        claimsList.appendChild(li);
+      } else {
+        claims.forEach((cl) => {
+          const li = document.createElement("li");
+          li.textContent = cl;
+          claimsList.appendChild(li);
+        });
+      }
+    }
+
+    function renderSummaryBlock(summaryBlock) {
+      document.getElementById("summary-score").textContent =
+        (summaryBlock?.score ?? 0).toFixed(1).replace(/\.0$/, "");
+
+      const rec = summaryBlock?.recommended_summary_block || "No summary generated.";
+      document.getElementById("recommended-summary").textContent = rec;
+    }
+
+    function renderIssuesAndScores(execSummary, scoreMatrix, clarityBlock) {
+      const issuesList = document.getElementById("issues-list");
+      issuesList.innerHTML = "";
+      (execSummary?.top_3_fixes || []).forEach((fix) => {
+        const li = document.createElement("li");
+        li.textContent = fix;
+        issuesList.appendChild(li);
+      });
+
+      // Additional clarity issues as extra context
+      const clarityIssues = clarityBlock?.issues || [];
+      if (clarityIssues.length) {
+        const li = document.createElement("li");
+        li.textContent = `Clarity issues: ${clarityIssues.join(", ")}`;
+        issuesList.appendChild(li);
+      }
+
+      const scoreBars = document.getElementById("score-bars");
+      scoreBars.innerHTML = "";
+
+      const entries = [
+        ["Page introduction (summary)", scoreMatrix?.summary_block],
+        ["Key concepts explained (definitions)", scoreMatrix?.definitions],
+        ["User questions answered (FAQ)", scoreMatrix?.faq],
+        ["Real questions covered (fanout)", scoreMatrix?.fanout_match],
+        ["Links & context (canonicals)", scoreMatrix?.canonical_resources],
+        ["Structure & headings", scoreMatrix?.structure],
+        ["Clarity & readability", scoreMatrix?.clarity],
+        ["Trust & authority (EEAT)", scoreMatrix?.eeat],
+      ];
+
+      entries.forEach(([label, value]) => {
+        const v = typeof value === "number" ? value : 0;
+        const pct = Math.max(0, Math.min(10, v)) * 10;
+        const row = document.createElement("div");
+        row.className = "flex items-center gap-3 text-xs";
+        row.innerHTML = `
+          <div class="w-1/2 text-slate-600">${label}</div>
+          <div class="flex-1">
+            <div class="score-bar-track">
+              <div class="score-bar-fill" style="width:${pct}%;"></div>
+            </div>
+          </div>
+          <div class="w-10 text-right text-slate-800 font-medium">${v.toFixed(1).replace(/\.0$/, "")}</div>
+        `;
+        scoreBars.appendChild(row);
+      });
+
+      // Score matrix chart (simple bar chart)
+      const categories = entries.map((e) => e[0]);
+      const values = entries.map((e) =>
+        typeof e[1] === "number" ? e[1] : 0
+      );
+
+      if (matrixChart) {
+        matrixChart.updateOptions({ xaxis: { categories }, series: [{ data: values }] });
+      } else {
+        matrixChart = new ApexCharts(document.querySelector("#score-matrix-chart"), {
+          chart: {
+            type: "bar",
+            height: 190,
+            toolbar: { show: false },
+          },
+          plotOptions: {
+            bar: {
+              horizontal: true,
+              borderRadius: 4,
+            },
+          },
+          dataLabels: { enabled: false },
+          xaxis: {
+            categories,
+            max: 10,
+          },
+          series: [
+            {
+              name: "Score",
+              data: values,
+            },
+          ],
+          colors: ["#2563EB"],
+        });
+        matrixChart.render();
+      }
+    }
+
+    function renderDefinitions(defBlock) {
+      const defs = defBlock?.recommended_definitions || [];
+      const list = document.getElementById("definitions-list");
+      list.innerHTML = "";
+
+      if (!defs.length) {
+        const li = document.createElement("li");
+        li.textContent = "No definitions generated.";
+        list.appendChild(li);
+      } else {
+        defs.forEach((d) => {
+          const li = document.createElement("li");
+          li.innerHTML = `
+            <span class="font-semibold">${d.term || "Term"}:</span>
+            <span class="text-slate-700"> ${d.definition || ""}</span>
+          `;
+          list.appendChild(li);
+        });
+      }
+
+      const missing = defBlock?.missing_critical_terms || [];
+      document.getElementById("missing-terms").textContent =
+        missing.length ? missing.join(", ") : "None flagged as critical.";
+    }
+
+    function matchPillClass(matchQuality) {
+      const v = (matchQuality || "").toLowerCase();
+      if (v === "excellent" || v === "good") return "pill pill-good";
+      if (v === "weak") return "pill pill-warn";
+      return "pill pill-bad";
+    }
+
+    function renderFanout(fanoutBlock) {
+      const score = fanoutBlock?.coverage_score ?? 0;
+      document.getElementById("fanout-score").textContent =
+        score.toFixed(1).replace(/\.0$/, "");
+
+      const tbody = document.getElementById("fanout-table-body");
+      tbody.innerHTML = "";
+      (fanoutBlock?.sub_questions_generated || []).forEach((sq) => {
+        const tr = document.createElement("tr");
+        tr.className = "bg-white";
+        tr.innerHTML = `
+          <td class="table-cell pr-4 align-top">${sq.question || "—"}</td>
+          <td class="table-cell pr-4 align-top">
+            <span class="${matchPillClass(sq.match_quality)} text-[11px]">
+              ${sq.match_quality || "none"}
+            </span>
+          </td>
+          <td class="table-cell align-top text-xs text-slate-600">
+            ${sq.missing_answer_note || sq.matched_content || "—"}
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      const gapsList = document.getElementById("fanout-gaps");
+      gapsList.innerHTML = "";
+      (fanoutBlock?.main_gaps || []).forEach((gap) => {
+        const li = document.createElement("li");
+        li.textContent = gap;
+        gapsList.appendChild(li);
+      });
+    }
+
+    function renderFaq(faqBlock) {
+      document.getElementById("faq-score").textContent =
+        (faqBlock?.score ?? 0).toFixed(1).replace(/\.0$/, "");
+
+      const faqList = document.getElementById("faq-list");
+      faqList.innerHTML = "";
+      (faqBlock?.recommended_faqs || []).forEach((qa) => {
+        const wrapper = document.createElement("div");
+        wrapper.innerHTML = `
+          <p class="font-semibold">Q: ${qa.q || "—"}</p>
+          <p class="mt-1 text-slate-700">A: ${qa.a || "—"}</p>
+        `;
+        faqList.appendChild(wrapper);
+      });
+    }
+
+    function renderRoadmap(fixRoadmap, clarityBlock, eeatBlock) {
+      const fillList = (id, items) => {
+        const el = document.getElementById(id);
+        el.innerHTML = "";
+        if (!items || !items.length) {
+          const li = document.createElement("li");
+          li.textContent = "No specific actions suggested.";
+          el.appendChild(li);
+          return;
+        }
+        items.forEach((it) => {
+          const li = document.createElement("li");
+          li.textContent = it;
+          el.appendChild(li);
+        });
+      };
+
+      fillList("fix-24h", fixRoadmap?.immediate_fixes_next_24h);
+      fillList("fix-7d", fixRoadmap?.medium_priority_next_7_days);
+      fillList("fix-30d", fixRoadmap?.long_term_next_30_days);
+
+      const clarityIssues = clarityBlock?.issues || [];
+      const clarityFixes = clarityBlock?.fixes || [];
+
+      document.getElementById("clarity-issues").textContent =
+        clarityIssues.length
+          ? `Clarity issues noted: ${clarityIssues.join(", ")}.`
+          : "No major clarity issues explicitly flagged.";
+
+      const eeatScore = eeatBlock?.score ?? 0;
+      const missingElems = eeatBlock?.missing_elements || [];
+      const authorInfo = eeatBlock?.author_info_found ? "Yes" : "No";
+
+      document.getElementById("eeat-summary").textContent =
+        `EEAT score: ${eeatScore.toFixed(1).replace(/\.0$/, "")}/10. Author info present: ${authorInfo}. Missing trust/authority elements: ${
+          missingElems.length ? missingElems.join(", ") : "None explicitly flagged."
+        }`;
+    }
+
+    function renderCanonical(canonBlock) {
+      document.getElementById("canon-score").textContent =
+        (canonBlock?.score ?? 0).toFixed(1).replace(/\.0$/, "");
+      document.getElementById("canon-why").textContent =
+        canonBlock?.why_it_matters ||
+        "Canonical resources help AI understand which pages are authoritative for this topic.";
+
+      const list = document.getElementById("canon-list");
+      list.innerHTML = "";
+      (canonBlock?.recommended_resources || []).forEach((res) => {
+        const li = document.createElement("li");
+        li.innerHTML = `
+          <a href="${res.url || "#"}" target="_blank" rel="noopener noreferrer"
+             class="text-blue-600 hover:text-blue-800 text-sm">
+            ${res.title || res.url || "Resource"}
+          </a>
+        `;
+        list.appendChild(li);
+      });
+    }
+
+    function renderAdvanced(pageMeta, rawData) {
+      document.getElementById("raw-tokens").textContent =
+        rawData?.tokens ?? "—";
+      document.getElementById("raw-time").textContent =
+        `${rawData?.processing_time ?? "—"}s`;
+      document.getElementById("content-type").textContent =
+        pageMeta?.content_type || "—";
+
+      document.getElementById("raw-clean-text").textContent =
+        (rawData?.clean_text || "").slice(0, 3000);
+      document.getElementById("raw-html").textContent =
+        (rawData?.html_extracted || "").slice(0, 3000);
+    }
+
+    function renderReport(data) {
+      const pageMeta = data.page_metadata || {};
+      const execSummary = data.executive_summary || {};
+      const llmInterp = data.llm_interpretation || {};
+      const summaryBlock = data.summary_block || {};
+      const defBlock = data.definitions_block || {};
+      const fanoutBlock = data.fanout_query_analysis || {};
+      const faqBlock = data.faq_block || {};
+      const canonBlock = data.canonical_resources_block || {};
+      const clarityBlock = data.clarity_readability || {};
+      const eeatBlock = data.eeat_block || {};
+      const scoreMatrix = data.score_matrix || {};
+      const fixRoadmap = data.fix_roadmap || {};
+      const rawData = data.raw_data || {};
+
+      renderHero(pageMeta, execSummary, scoreMatrix);
+      renderLlmInterpretation(llmInterp);
+      renderSummaryBlock(summaryBlock);
+      renderIssuesAndScores(execSummary, scoreMatrix, clarityBlock);
+      renderDefinitions(defBlock);
+      renderFanout(fanoutBlock);
+      renderFaq(faqBlock);
+      renderRoadmap(fixRoadmap, clarityBlock, eeatBlock);
+      renderCanonical(canonBlock);
+      renderAdvanced(pageMeta, rawData);
+    }
+
+    // Event wiring
+    if (analyzeBtn) {
+      analyzeBtn.addEventListener("click", () => analyzeUrl(urlInput.value));
+    }
+
+    if (urlInput) {
+      urlInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          analyzeUrl(urlInput.value);
+        }
+      });
+    }
+
+    sampleButtons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const sampleUrl = btn.getAttribute("data-sample");
+        urlInput.value = sampleUrl;
+        analyzeUrl(sampleUrl);
+      });
+    });
+
+    if (sampleBtnTop) {
+      sampleBtnTop.addEventListener("click", () => {
+        const demoUrl = "https://example.com";
+        urlInput.value = demoUrl;
+        analyzeUrl(demoUrl);
+      });
+    }
+
+    if (advancedToggle) {
+      advancedToggle.addEventListener("click", () => {
+        const isHidden = advancedBody.classList.contains("hidden");
+        advancedBody.classList.toggle("hidden", !isHidden);
+        advancedIcon.textContent = isHidden ? "▲" : "▼";
+      });
+    }
+
+    // Init AOS
+    if (window.AOS) {
+      AOS.init({
+        duration: 400,
+        once: true,
+      });
+    }
+  </script>
+</body>
+</html>

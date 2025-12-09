@@ -1,0 +1,25 @@
+<svg width="180" height="40" viewBox="0 0 180 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="qaGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse"
+      gradientTransform="translate(12 12) rotate(45) scale(18)">
+      <stop offset="0" stop-color="#38BDF8"/>
+      <stop offset="0.4" stop-color="#3B82F6"/>
+      <stop offset="0.75" stop-color="#8B5CF6"/>
+      <stop offset="1" stop-color="#F97316"/>
+    </radialGradient>
+  </defs>
+
+  <!-- circular gradient mark -->
+  <circle cx="12" cy="20" r="12" fill="url(#qaGlow)"/>
+  <circle cx="12" cy="20" r="11" stroke="white" stroke-opacity="0.1" stroke-width="1"/>
+
+  <!-- QueryArc text -->
+  <text x="32" y="24" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+        font-size="18" font-weight="600" fill="#111827" letter-spacing="0.04em">
+    Query
+  </text>
+  <text x="89" y="24" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+        font-size="18" font-weight="700" fill="#3B82F6" letter-spacing="0.04em">
+    Arc
+  </text>
+</svg>
