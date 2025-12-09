@@ -320,18 +320,20 @@ Return ONLY the JSON object.
     return parsed
 
 
-# ------------- API router for the new tool endpoint -----------------
+# ------------- API router for the Arc Rank Checker endpoint -----------------
 
-api_router = APIRouter(prefix="/api/tools/llm-seo", tags=["llm-seo"])
-
+api_router = APIRouter(
+    prefix="/api/tools/arc-rank-checker",
+    tags=["arc-rank-checker"],
+)
 
 @api_router.post("/analyze")
 def api_analyze_page(payload: AnalyzeRequest):
     """
-    Primary API endpoint for the LLM SEO tool.
-    This is what the future React/Next.js frontend will call.
+    Arc Rank Checker - Analyze endpoint.
+    This is what the future frontend will call.
     """
-    return run_llm_seo_analysis(payload.url)
+    return run_llm_seo_analysis(payload.url.strip())
 
 
 app.include_router(api_router)
