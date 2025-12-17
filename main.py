@@ -5,7 +5,7 @@ import json
 import requests
 import urllib.parse
 import time
-from datetime import datetime
+from datetime import timezone, datetime
 
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Dict, Any
@@ -27,8 +27,9 @@ MAX_HTML_CHARS = 6000      # hard cap for HTML snippet sent to LLM
 # Load environment variables
 load_dotenv()
 
-# Initialize OpenAI client
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# Initialize OpenAI client (local can run without key; analyze needs key)
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 
 app = FastAPI()
 
@@ -45,15 +46,37 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
+# ---------------- Routers ----------------
+
+api_router = APIRouter(
+    prefix="/api/tools/arc-rank-checker",
+    tags=["arc-rank-checker"],
+)
+
+aiap_router = APIRouter(
+    prefix="/api/tools/ai-answer-presence",
+    tags=["ai-answer-presence"],
+)
+
+
+# ---------------- Models ----------------
+
 class AnalyzeRequest(BaseModel):
     url: str
 
+
+class TestContractRequest(BaseModel):
+    project_name: str
+    core_topic: str
+    brand_terms: list[str]
+
+
+# ---------------- Core logic ----------------
 
 def run_llm_seo_analysis(url: str) -> dict:
     """
     Core pipeline: fetch page, extract metadata, run LLM, validate, rescore.
     """
-
     url = url.strip()
     if not url.startswith("http://") and not url.startswith("https://"):
         url = "https://" + url
@@ -76,7 +99,6 @@ def run_llm_seo_analysis(url: str) -> dict:
 
     # Extract readable text with fallback and hard limits
     try:
-        # First attempt: readability content
         doc = Document(html)
         cleaned_html = doc.summary()
         soup = BeautifulSoup(cleaned_html, "html.parser")
@@ -259,6 +281,13 @@ for what this page appears to be about.
 Return ONLY the JSON object.
 """
 
+    # Guard: allow local server to boot without key
+    if client is None:
+        raise HTTPException(
+            status_code=500,
+            detail="OPENAI_API_KEY is not set for this environment. Local server can run, but this endpoint requires the key.",
+        )
+
     # Send to OpenAI
     try:
         completion = client.chat.completions.create(
@@ -268,7 +297,7 @@ Return ONLY the JSON object.
                 {"role": "user", "content": user_prompt},
             ],
             temperature=0.2,
-            response_format={"type": "json_object"},  # force JSON output
+            response_format={"type": "json_object"},
         )
     except RateLimitError:
         raise HTTPException(
@@ -278,7 +307,7 @@ Return ONLY the JSON object.
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"LLM error: {str(e)}")
 
-    # Model should now return JSON as a string (or dict in some SDKs)
+    # Parse model output
     raw_content = completion.choices[0].message.content
 
     if isinstance(raw_content, dict):
@@ -320,12 +349,7 @@ Return ONLY the JSON object.
     return parsed
 
 
-# ------------- API router for the Arc Rank Checker endpoint -----------------
-
-api_router = APIRouter(
-    prefix="/api/tools/arc-rank-checker",
-    tags=["arc-rank-checker"],
-)
+# ---------------- API routes ----------------
 
 @api_router.post("/analyze")
 def api_analyze_page(payload: AnalyzeRequest):
@@ -336,11 +360,20 @@ def api_analyze_page(payload: AnalyzeRequest):
     return run_llm_seo_analysis(payload.url.strip())
 
 
+@aiap_router.post("/test-contract")
+def test_contract(payload: TestContractRequest):
+    return {
+        "accepted": True,
+        "received_at": datetime.now(timezone.utc).isoformat(),
+        "echo": payload.model_dump(),
+    }
+
+
 app.include_router(api_router)
+app.include_router(aiap_router)
 
 
-# -------------------- Existing routes / helpers ---------------------
-
+# ---------------- Existing routes / helpers ----------------
 
 @app.get("/site", response_class=HTMLResponse)
 def serve_marketing_site():
@@ -393,7 +426,6 @@ def validate_llm_output(data: dict):
     Validate that the LLM output roughly matches the LLM-SEO report schema.
     This is strict enough to catch obvious issues but not a full JSON Schema validator.
     """
-
     required_top = [
         "page_metadata",
         "executive_summary",
@@ -417,7 +449,6 @@ def validate_llm_output(data: dict):
             detail=f"Invalid format: missing top-level keys {missing_top}",
         )
 
-    # Basic score matrix validation
     sm = data.get("score_matrix", {})
     required_scores = [
         "summary_block",
@@ -443,7 +474,6 @@ def validate_llm_output(data: dict):
             detail="Invalid format: score_matrix.final_score must be an integer",
         )
 
-    # Executive summary sanity check
     ex = data.get("executive_summary", {})
     if "overall_llm_readiness_score" not in ex or "verdict" not in ex:
         raise HTTPException(
@@ -461,10 +491,8 @@ def apply_scoring_algorithm(report: dict) -> dict:
     - Apply simple penalties.
     - Update executive_summary.overall_llm_readiness_score and verdict.
     """
-
     sm = report.get("score_matrix", {})
 
-    # Get component scores with sane defaults
     summary = sm.get("summary_block", 0)
     definitions = sm.get("definitions", 0)
     faq = sm.get("faq", 0)
@@ -474,7 +502,6 @@ def apply_scoring_algorithm(report: dict) -> dict:
     clarity = sm.get("clarity", 0)
     eeat = sm.get("eeat", 0)
 
-    # Weighted base score (0–10)
     base = (
         summary * 0.15
         + definitions * 0.10
@@ -486,25 +513,20 @@ def apply_scoring_algorithm(report: dict) -> dict:
         + eeat * 0.15
     )
 
-    # Convert to 0–100
     final_score = round(base * 10)
 
-    # Penalty based on word count
     word_count = report.get("page_metadata", {}).get("word_count", 0)
     if isinstance(word_count, int):
         if word_count == 0:
-            final_score -= 10  # essentially empty / parsing failed
+            final_score -= 10
         elif word_count < 150:
-            final_score -= 3   # thin but not empty
+            final_score -= 3
 
-    # Clamp
     final_score = max(0, min(100, final_score))
 
-    # Update score_matrix and executive_summary
     report["score_matrix"]["final_score"] = final_score
     report["executive_summary"]["overall_llm_readiness_score"] = final_score
 
-    # Verdict mapping
     if final_score >= 80:
         verdict = "Ready"
     elif final_score >= 60:
@@ -515,7 +537,6 @@ def apply_scoring_algorithm(report: dict) -> dict:
         verdict = "Poor"
 
     report["executive_summary"]["verdict"] = verdict
-
     return report
 
 
