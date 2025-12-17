@@ -5,6 +5,7 @@ import json
 import requests
 import urllib.parse
 import time
+from tools.ai_answer_presence import aiap_router
 from datetime import timezone, datetime
 
 from fastapi.middleware.cors import CORSMiddleware
@@ -53,22 +54,12 @@ api_router = APIRouter(
     tags=["arc-rank-checker"],
 )
 
-aiap_router = APIRouter(
-    prefix="/api/tools/ai-answer-presence",
-    tags=["ai-answer-presence"],
-)
 
 
 # ---------------- Models ----------------
 
 class AnalyzeRequest(BaseModel):
     url: str
-
-
-class TestContractRequest(BaseModel):
-    project_name: str
-    core_topic: str
-    brand_terms: list[str]
 
 
 # ---------------- Core logic ----------------
@@ -358,15 +349,6 @@ def api_analyze_page(payload: AnalyzeRequest):
     This is what the future frontend will call.
     """
     return run_llm_seo_analysis(payload.url.strip())
-
-
-@aiap_router.post("/test-contract")
-def test_contract(payload: TestContractRequest):
-    return {
-        "accepted": True,
-        "received_at": datetime.now(timezone.utc).isoformat(),
-        "echo": payload.model_dump(),
-    }
 
 
 app.include_router(api_router)
