@@ -18,6 +18,9 @@ from readability import Document
 from dotenv import load_dotenv
 from openai import OpenAI, RateLimitError
 
+from tools.ai_answer_presence import router as aiap_router
+
+
 # -------------------------------------------------------------------
 # Config
 # -------------------------------------------------------------------
@@ -33,7 +36,8 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 
 app = FastAPI()
-
+# Include routers
+app.include_router(aiap_router)
 # Allow local HTML frontend to call API
 app.add_middleware(
     CORSMiddleware,
