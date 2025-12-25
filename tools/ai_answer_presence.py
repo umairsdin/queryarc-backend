@@ -2,6 +2,9 @@ from fastapi import APIRouter, Body
 from datetime import datetime, timezone
 import os
 import json
+import uuid
+from psycopg2.extras import Json
+from db import get_conn
 from openai import OpenAI
 from fastapi import HTTPException
 
@@ -136,3 +139,37 @@ def contract():
     Used by frontend generators (Lovable, etc.) and tests.
     """
     return get_ai_answer_presence_contract()
+
+
+@router.post("/project")
+def create_project(payload: dict = Body(...)):
+    website = (payload.get("website") or "").strip()
+    topics = payload.get("topics") or []
+    competitors = payload.get("competitors") or []
+    questions = payload.get("questions") or []
+
+    if not website:
+        raise HTTPException(status_code=400, detail="website is required")
+
+    project_id = str(uuid.uuid4())
+
+    
+    try:
+        conn = get_conn()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database not configured: {e}")
+    cur = conn.cursor()
+
+
+    cur.execute(
+        """
+        INSERT INTO ai_projects (id, website, topics, competitors, questions)
+        VALUES (%s, %s, %s, %s, %s)
+        """,
+        (project_id, website, Json(topics), Json(competitors), Json(questions)),
+    )
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    return {"ok": True, "project_id": project_id}
