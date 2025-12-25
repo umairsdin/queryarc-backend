@@ -7,7 +7,7 @@ from psycopg2.extras import Json
 from db import get_conn
 from openai import OpenAI
 from fastapi import HTTPException
-
+from db import ensure_ai_projects_table
 from schemas.contracts import (
     AIAnswerPresenceRequest,
     AIAnswerPresenceResponse,
@@ -154,6 +154,7 @@ def create_project(payload: dict = Body(...)):
     project_id = str(uuid.uuid4())
 
     try:
+        ensure_ai_projects_table()
         conn = get_conn()
         cur = conn.cursor()
         cur.execute(
