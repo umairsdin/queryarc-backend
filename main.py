@@ -38,7 +38,9 @@ app.add_middleware(
 # Serve static files (CSS, JS)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-
+@app.head("/ai_answer_presence")
+def head_ai_answer_presence():
+    return
 # ---------------- Existing routes / helpers ----------------
 
 @app.get("/site", response_class=HTMLResponse)
