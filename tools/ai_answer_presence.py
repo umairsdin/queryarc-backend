@@ -53,12 +53,10 @@ def test_contract(payload: AIAnswerPresenceRequest):
 def preview(payload: dict = Body(...)):
     project_id = payload.get("project_id")
 
-    # Mode 1: Load from DB using project_id
+    # Mode 1: load from db using project_id
     if project_id:
-        try:
-            ensure_ai_projects_table()
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Database table init failed: {e}")
+        ensure_ai_projects_table()
+        ensure_ai_preview_runs_table()
 
         conn = get_conn()
         cur = conn.cursor()
@@ -74,13 +72,15 @@ def preview(payload: dict = Body(...)):
             raise HTTPException(status_code=404, detail="project not found")
 
         website, topics, competitors, questions = row
+        mode = "project_id"
 
-    # Mode 2: Use direct payload (fallback)
+    # Mode 2: direct payload
     else:
         website = (payload.get("website") or "").strip()
         questions = payload.get("questions") or []
         topics = payload.get("topics") or []
         competitors = payload.get("competitors") or []
+        mode = "direct"
 
         if not website:
             raise HTTPException(status_code=400, detail="website is required")
@@ -94,7 +94,6 @@ def preview(payload: dict = Body(...)):
     client = OpenAI(api_key=api_key)
     model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
-    # Keep preview small to control cost
     questions_used = (questions or [])[:3]
     results = []
 
@@ -119,10 +118,8 @@ Return ONLY valid JSON with exactly these keys:
 """.strip()
 
         resp = client.responses.create(model=model, input=prompt)
-
         text = (resp.output_text or "").strip()
 
-        # Remove ```json ... ``` wrappers if present
         clean = text
         if clean.startswith("```"):
             clean = clean.strip().lstrip("`")
@@ -153,37 +150,32 @@ Return ONLY valid JSON with exactly these keys:
     mention_rate = (sum(1 for v in mention_bools if v) / len(mention_bools)) if mention_bools else 0.0
 
     run_id = None
-
-    # Store preview run only when using project_id
     if project_id:
         run_id = str(uuid.uuid4())
-        try:
-            ensure_ai_preview_runs_table()
-            conn = get_conn()
-            cur = conn.cursor()
-            cur.execute(
-                "INSERT INTO ai_preview_runs (id, project_id, result) VALUES (%s, %s, %s)",
-                (
-                    run_id,
-                    project_id,
-                    Json(
-                        {
-                            "website": website,
-                            "questions_used": questions_used,
-                            "brand_mention_rate": mention_rate,
-                            "results": results,
-                        }
-                    ),
+        conn = get_conn()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO ai_preview_runs (id, project_id, result) VALUES (%s, %s, %s)",
+            (
+                run_id,
+                project_id,
+                Json(
+                    {
+                        "website": website,
+                        "questions_used": questions_used,
+                        "brand_mention_rate": mention_rate,
+                        "results": results,
+                    }
                 ),
-            )
-            conn.commit()
-            cur.close()
-            conn.close()
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Preview run insert failed: {type(e).__name__}: {e}")
+            ),
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
 
     return {
         "ok": True,
+        "mode": mode,
         "project_id": project_id,
         "run_id": run_id,
         "website": website,
