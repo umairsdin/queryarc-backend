@@ -153,23 +153,21 @@ def create_project(payload: dict = Body(...)):
 
     project_id = str(uuid.uuid4())
 
-    
     try:
         conn = get_conn()
+        cur = conn.cursor()
+        cur.execute(
+            """
+            INSERT INTO ai_projects (id, website, topics, competitors, questions)
+            VALUES (%s, %s, %s, %s, %s)
+            """,
+            (project_id, website, Json(topics), Json(competitors), Json(questions)),
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+        return {"ok": True, "project_id": project_id}
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Database not configured: {e}")
-    cur = conn.cursor()
-
-
-    cur.execute(
-        """
-        INSERT INTO ai_projects (id, website, topics, competitors, questions)
-        VALUES (%s, %s, %s, %s, %s)
-        """,
-        (project_id, website, Json(topics), Json(competitors), Json(questions)),
-    )
-    conn.commit()
-    cur.close()
-    conn.close()
-
-    return {"ok": True, "project_id": project_id}
+        # temporary debug
+        raise HTTPException(status_code=500, detail=f"Project insert failed: {type(e).__name__}: {e}")
