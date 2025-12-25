@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Ai answer presence</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 24px; max-width: 920px; }
+    label { display:block; margin: 14px 0 6px; font-weight: 600; }
+    input, textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px; }
+    textarea { min-height: 90px; }
+    .row { display:flex; gap: 12px; }
+    .row > div { flex: 1; }
+    button { margin-top: 14px; padding: 10px 14px; border: 0; border-radius: 10px; cursor: pointer; }
+    button.primary { background: #111; color: #fff; }
+    button.secondary { background: #eee; }
+    .muted { color:#666; font-size: 14px; }
+    pre { background:#0b0b0b; color:#eaeaea; padding: 12px; border-radius: 10px; overflow:auto; }
+    .card { border: 1px solid #e6e6e6; border-radius: 12px; padding: 14px; margin-top: 14px; }
+    .kpi { display:flex; gap: 12px; flex-wrap: wrap; }
+    .kpi .box { border:1px solid #eee; border-radius: 12px; padding: 12px; min-width: 160px; }
+    .ok { color: #0a7a2f; font-weight: 700; }
+    .err { color: #b00020; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <h1>Ai answer presence</h1>
+  <p class="muted">Creates a project, runs a preview against OpenAI, stores the run, and lets you fetch the latest preview.</p>
+
+  <div class="card">
+    <div class="row">
+      <div>
+        <label>Backend base url</label>
+        <input id="baseUrl" value="https://queryarc-backend-staging.up.railway.app" />
+        <div class="muted">For production later, change this to your production backend url.</div>
+      </div>
+    </div>
+
+    <label>Website</label>
+    <input id="website" placeholder="https://queryarc.com" />
+
+    <div class="row">
+      <div>
+        <label>Topics (comma-separated)</label>
+        <input id="topics" placeholder="llm seo, brand visibility" />
+      </div>
+      <div>
+        <label>Competitors (comma-separated)</label>
+        <input id="competitors" placeholder="ahrefs.com, semrush.com" />
+      </div>
+    </div>
+
+    <label>Questions (one per line)</label>
+    <textarea id="questions" placeholder="What is the best llm seo tool?
+How to improve visibility in chatgpt?
+What are alternatives to queryarc?"></textarea>
+
+    <div class="row">
+      <div>
+        <button class="primary" id="btnRun">Create project + run preview</button>
+        <button class="secondary" id="btnLatest" disabled>Fetch latest preview</button>
+      </div>
+    </div>
+
+    <div style="margin-top:10px;">
+      <span id="status" class="muted"></span>
+    </div>
+
+    <div class="muted" style="margin-top:10px;">
+      Project id: <code id="projectId">-</code><br/>
+      Run id: <code id="runId">-</code>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Preview summary</h3>
+    <div class="kpi">
+      <div class="box">
+        <div class="muted">Brand mention rate</div>
+        <div id="mentionRate" style="font-size:22px;font-weight:800;">-</div>
+      </div>
+      <div class="box">
+        <div class="muted">Questions used</div>
+        <div id="questionsUsed" style="font-size:22px;font-weight:800;">-</div>
+      </div>
+      <div class="box">
+        <div class="muted">Mode</div>
+        <div id="mode" style="font-size:22px;font-weight:800;">-</div>
+      </div>
+    </div>
+
+    <div style="margin-top:12px;">
+      <h3>Results</h3>
+      <div id="results"></div>
+    </div>
+
+    <details style="margin-top:12px;">
+      <summary class="muted">Raw json</summary>
+      <pre id="raw">-</pre>
+    </details>
+  </div>
+
+  <script>
+    const el = (id) => document.getElementById(id);
+
+    function setStatus(text, kind = "muted") {
+      const s = el("status");
+      s.className = kind;
+      s.textContent = text;
+    }
+
+    function csvToList(s) {
+      return (s || "")
+        .split(",")
+        .map(x => x.trim())
+        .filter(Boolean);
+    }
+
+    function linesToList(s) {
+      return (s || "")
+        .split("\n")
+        .map(x => x.trim())
+        .filter(Boolean);
+    }
+
+    function renderPreview(data) {
+      el("raw").textContent = JSON.stringify(data, null, 2);
+      el("mentionRate").textContent = (data.brand_mention_rate ?? "-");
+      el("questionsUsed").textContent = (data.questions_used ? data.questions_used.length : "-");
+      el("mode").textContent = data.mode ?? "-";
+
+      el("projectId").textContent = data.project_id || el("projectId").textContent;
+      el("runId").textContent = data.run_id || "-";
+
+      const container = el("results");
+      container.innerHTML = "";
+
+      const results = data.results || [];
+      if (!results.length) {
+        container.innerHTML = "<div class='muted'>No results yet.</div>";
+        return;
+      }
+
+      results.forEach((item, idx) => {
+        const r = item.result || {};
+        const div = document.createElement("div");
+        div.className = "card";
+        div.innerHTML = `
+          <div class="muted">Question ${idx + 1}</div>
+          <div style="font-weight:800; margin-top:6px;">${item.question || ""}</div>
+          <div style="margin-top:10px;">
+            <div><span class="muted">Brand mentioned:</span> <b>${r.brand_mentioned}</b></div>
+            <div><span class="muted">Recommendation strength:</span> <b>${r.recommendation_strength}</b></div>
+            <div><span class="muted">Competitors mentioned:</span> <b>${(r.competitors_mentioned || []).join(", ")}</b></div>
+            <div style="margin-top:8px;"><span class="muted">Summary:</span> ${r.short_summary || ""}</div>
+            <div style="margin-top:8px;"><span class="muted">Evidence:</span> <i>${r.evidence_snippet || ""}</i></div>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    async function api(path, options = {}) {
+      const base = el("baseUrl").value.trim().replace(/\/+$/, "");
+      const url = base + path;
+      const res = await fetch(url, {
+        headers: { "Content-Type": "application/json" },
+        ...options
+      });
+      const text = await res.text();
+      let json;
+      try { json = JSON.parse(text); } catch { json = null; }
+
+      if (!res.ok) {
+        const msg = (json && json.detail) ? json.detail : text;
+        throw new Error(msg || ("Request failed: " + res.status));
+      }
+      return json ?? {};
+    }
+
+    async function createProject() {
+      const payload = {
+        website: el("website").value.trim(),
+        topics: csvToList(el("topics").value),
+        competitors: csvToList(el("competitors").value),
+        questions: linesToList(el("questions").value),
+      };
+      return api("/api/tools/ai-answer-presence/project", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+    }
+
+    async function runPreview(projectId) {
+      return api("/api/tools/ai-answer-presence/preview", {
+        method: "POST",
+        body: JSON.stringify({ project_id: projectId }),
+      });
+    }
+
+    async function fetchLatest(projectId) {
+      return api(`/api/tools/ai-answer-presence/project/${projectId}/latest-preview`, {
+        method: "GET",
+      });
+    }
+
+    el("btnRun").addEventListener("click", async () => {
+      try {
+        el("btnRun").disabled = true;
+        setStatus("Creating project...", "muted");
+
+        const p = await createProject();
+        const projectId = p.project_id;
+        el("projectId").textContent = projectId;
+        el("btnLatest").disabled = false;
+
+        setStatus("Running preview...", "muted");
+        const preview = await runPreview(projectId);
+
+        renderPreview(preview);
+        setStatus("Done.", "ok");
+      } catch (e) {
+        setStatus("Error: " + e.message, "err");
+      } finally {
+        el("btnRun").disabled = false;
+      }
+    });
+
+    el("btnLatest").addEventListener("click", async () => {
+      try {
+        const projectId = el("projectId").textContent.trim();
+        if (!projectId || projectId === "-") {
+          setStatus("No project id yet. Run preview first.", "err");
+          return;
+        }
+        setStatus("Fetching latest preview...", "muted");
+        const latest = await fetchLatest(projectId);
+
+        // latest.result contains the stored preview payload
+        const data = {
+          ok: true,
+          mode: "latest",
+          project_id: latest.project_id,
+          run_id: latest.run_id,
+          website: latest.result.website,
+          questions_used: latest.result.questions_used,
+          brand_mention_rate: latest.result.brand_mention_rate,
+          results: latest.result.results,
+          locked: true,
+        };
+
+        renderPreview(data);
+        setStatus("Done.", "ok");
+      } catch (e) {
+        setStatus("Error: " + e.message, "err");
+      }
+    });
+  </script>
+</body>
+</html>
