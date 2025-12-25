@@ -1,5 +1,9 @@
 from fastapi import APIRouter, Body
 from datetime import datetime, timezone
+import os
+import json
+from openai import OpenAI
+from fastapi import HTTPException
 
 from schemas.contracts import (
     AIAnswerPresenceRequest,
@@ -34,25 +38,93 @@ def test_contract(payload: AIAnswerPresenceRequest):
     )
 @router.post("/preview")
 def preview(payload: dict = Body(...)):
-    """
-    MVP preview endpoint (placeholder).
-    Next step: connect OpenAI + DB.
-    """
-    website = payload.get("website", "")
-    topics = payload.get("topics", [])
-    questions = payload.get("questions", [])
-    competitors = payload.get("competitors", [])
+    website = (payload.get("website") or "").strip()
+    questions = payload.get("questions") or []
+    topics = payload.get("topics") or []
+    competitors = payload.get("competitors") or []
 
-    questions_used = questions[:5] if isinstance(questions, list) else []
+    if not website:
+        raise HTTPException(status_code=400, detail="website is required")
+    if not isinstance(questions, list) or not questions:
+        raise HTTPException(status_code=400, detail="questions must be a non-empty list")
+
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="OPENAI_API_KEY is missing on server")
+
+    client = OpenAI(api_key=api_key)
+    model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+
+    questions_used = questions[:3]
+    results = []
+
+    for q in questions_used:
+        prompt = f"""
+You are analyzing brand presence in LLM answers.
+
+Brand website: {website}
+Topics: {topics}
+Known competitors: {competitors}
+
+Question: {q}
+
+Return ONLY valid JSON with exactly these keys:
+{{
+  "brand_mentioned": true/false,
+  "competitors_mentioned": ["..."],
+  "recommendation_strength": 0.0,
+  "short_summary": "one sentence",
+  "evidence_snippet": "short quote from the answer"
+}}
+""".strip()
+
+        resp = client.responses.create(model=model, input=prompt)
+        
+        text = (resp.output_text or "").strip()
+        # Remove ```json ... ``` wrappers if present
+        clean = text
+        if clean.startswith("```"):
+            clean = clean.strip().lstrip("`")
+            # remove leading 'json' if it exists
+            if clean.lower().startswith("json"):
+                clean = clean[4:].lstrip()
+            # remove trailing ```
+            if clean.endswith("```"):
+                clean = clean[:-3].strip()
+
+        try:
+            parsed = json.loads(clean)
+        except Exception:
+            parsed = {
+                "brand_mentioned": None,
+                "competitors_mentioned": [],
+                "recommendation_strength": None,
+                "short_summary": "Could not parse JSON output",
+                "evidence_snippet": "",
+                "raw": text[:800],
+            }
+
+
+        results.append({"question": q, "result": parsed})
+
+    mention_bools = [
+        r["result"].get("brand_mentioned")
+        for r in results
+        if isinstance(r["result"].get("brand_mentioned"), bool)
+    ]
+    mention_rate = (sum(1 for v in mention_bools if v) / len(mention_bools)) if mention_bools else 0.0
 
     return {
         "ok": True,
         "website": website,
-        "topics_count": len(topics) if isinstance(topics, list) else 0,
-        "competitors_count": len(competitors) if isinstance(competitors, list) else 0,
         "questions_used": questions_used,
+        "brand_mention_rate": mention_rate,
+        "results": results,
         "locked": True,
     }
+
+
+
 # ---------------------------------------------------------
 # Contract introspection endpoint
 # ---------------------------------------------------------
