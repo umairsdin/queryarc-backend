@@ -10,7 +10,34 @@ from db import get_conn, ensure_tables
 import uuid
 import psycopg2
 from psycopg2.extras import Json
+from fastapi.middleware.cors import CORSMiddleware
+import os
 
+from fastapi import FastAPI
+
+app = FastAPI()
+
+@app.get("/health")
+def health():
+    return {"ok": True}
+
+
+origins = [
+  "https://tools.queryarc.com",
+  "https://tools-staging.queryarc.com",
+]
+
+# optional: allow local dev
+if os.getenv("ENV") != "production":
+    origins += ["http://localhost:5173", "http://127.0.0.1:5173"]
+
+app.add_middleware(
+  CORSMiddleware,
+  allow_origins=origins,
+  allow_credentials=False,  # keep False unless you are using cookies-based auth
+  allow_methods=["*"],
+  allow_headers=["*"],
+)
 # -------------------------------------------------------------------
 # Config
 # -------------------------------------------------------------------
