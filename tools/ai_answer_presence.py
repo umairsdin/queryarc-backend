@@ -169,5 +169,4 @@ def create_project(payload: dict = Body(...)):
         return {"ok": True, "project_id": project_id}
 
     except Exception as e:
-        # temporary debug
         raise HTTPException(status_code=500, detail=f"Project insert failed: {type(e).__name__}: {e}")
