@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from dotenv import load_dotenv
 from tools.ai_answer_presence import router as ai_answer_presence_router
 from tools.arc_rank_checker import router as arc_rank_checker_router
+from db import get_conn
 
 # -------------------------------------------------------------------
 # Config
@@ -70,3 +71,15 @@ def serve_index():
             content="<h1>index.html not found</h1><p>Place index.html next to main.py.</p>",
             status_code=500,
         )
+@app.get("/db-health")
+def db_health():
+    try:
+        conn = get_conn()
+        cur = conn.cursor()
+        cur.execute("SELECT 1;")
+        val = cur.fetchone()[0]
+        cur.close()
+        conn.close()
+        return {"db": "ok", "select_1": val}
+    except Exception as e:
+        return {"db": "error", "detail": str(e)}
