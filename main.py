@@ -38,10 +38,26 @@ app.add_middleware(
 # Serve static files (CSS, JS)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+
+
 @app.head("/ai_answer_presence")
 def head_ai_answer_presence():
     return
 # ---------------- Existing routes / helpers ----------------
+
+@app.get("/tools", response_class=HTMLResponse)
+def serve_tools_home():
+    base_dir = os.path.dirname(__file__)
+    path = os.path.join(base_dir, "static", "tools.html")
+
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        return HTMLResponse(
+            content="<h1>tools.html not found</h1><p>Place it inside /static.</p>",
+            status_code=500,
+        )
 
 @app.get("/site", response_class=HTMLResponse)
 def serve_marketing_site():
