@@ -1,13 +1,18 @@
-from fastapi import APIRouter, Body
+from fastapi import APIRouter, Body, HTTPException
 from datetime import datetime, timezone
 import os
 import json
 import uuid
-from psycopg2.extras import Json
-from db import get_conn
+
 from openai import OpenAI
-from fastapi import HTTPException
-from db import ensure_ai_projects_table
+from psycopg2.extras import Json
+
+from db import (
+    get_conn,
+    ensure_ai_projects_table,
+    ensure_ai_preview_runs_table,
+)
+
 from schemas.contracts import (
     AIAnswerPresenceRequest,
     AIAnswerPresenceResponse,
@@ -39,17 +44,48 @@ def test_contract(payload: AIAnswerPresenceRequest):
         received_at=datetime.now(timezone.utc),
         echo=payload,
     )
+
+# ---------------------------------------------------------
+# Preview endpoint (supports project_id mode + direct payload)
+# ---------------------------------------------------------
+
 @router.post("/preview")
 def preview(payload: dict = Body(...)):
-    website = (payload.get("website") or "").strip()
-    questions = payload.get("questions") or []
-    topics = payload.get("topics") or []
-    competitors = payload.get("competitors") or []
+    project_id = payload.get("project_id")
 
-    if not website:
-        raise HTTPException(status_code=400, detail="website is required")
-    if not isinstance(questions, list) or not questions:
-        raise HTTPException(status_code=400, detail="questions must be a non-empty list")
+    # Mode 1: Load from DB using project_id
+    if project_id:
+        try:
+            ensure_ai_projects_table()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Database table init failed: {e}")
+
+        conn = get_conn()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT website, topics, competitors, questions FROM ai_projects WHERE id = %s",
+            (project_id,),
+        )
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+
+        if not row:
+            raise HTTPException(status_code=404, detail="project not found")
+
+        website, topics, competitors, questions = row
+
+    # Mode 2: Use direct payload (fallback)
+    else:
+        website = (payload.get("website") or "").strip()
+        questions = payload.get("questions") or []
+        topics = payload.get("topics") or []
+        competitors = payload.get("competitors") or []
+
+        if not website:
+            raise HTTPException(status_code=400, detail="website is required")
+        if not isinstance(questions, list) or not questions:
+            raise HTTPException(status_code=400, detail="questions must be a non-empty list")
 
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
@@ -58,7 +94,8 @@ def preview(payload: dict = Body(...)):
     client = OpenAI(api_key=api_key)
     model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
-    questions_used = questions[:3]
+    # Keep preview small to control cost
+    questions_used = (questions or [])[:3]
     results = []
 
     for q in questions_used:
@@ -82,16 +119,15 @@ Return ONLY valid JSON with exactly these keys:
 """.strip()
 
         resp = client.responses.create(model=model, input=prompt)
-        
+
         text = (resp.output_text or "").strip()
+
         # Remove ```json ... ``` wrappers if present
         clean = text
         if clean.startswith("```"):
             clean = clean.strip().lstrip("`")
-            # remove leading 'json' if it exists
             if clean.lower().startswith("json"):
                 clean = clean[4:].lstrip()
-            # remove trailing ```
             if clean.endswith("```"):
                 clean = clean[:-3].strip()
 
@@ -107,7 +143,6 @@ Return ONLY valid JSON with exactly these keys:
                 "raw": text[:800],
             }
 
-
         results.append({"question": q, "result": parsed})
 
     mention_bools = [
@@ -117,16 +152,46 @@ Return ONLY valid JSON with exactly these keys:
     ]
     mention_rate = (sum(1 for v in mention_bools if v) / len(mention_bools)) if mention_bools else 0.0
 
+    run_id = None
+
+    # Store preview run only when using project_id
+    if project_id:
+        run_id = str(uuid.uuid4())
+        try:
+            ensure_ai_preview_runs_table()
+            conn = get_conn()
+            cur = conn.cursor()
+            cur.execute(
+                "INSERT INTO ai_preview_runs (id, project_id, result) VALUES (%s, %s, %s)",
+                (
+                    run_id,
+                    project_id,
+                    Json(
+                        {
+                            "website": website,
+                            "questions_used": questions_used,
+                            "brand_mention_rate": mention_rate,
+                            "results": results,
+                        }
+                    ),
+                ),
+            )
+            conn.commit()
+            cur.close()
+            conn.close()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Preview run insert failed: {type(e).__name__}: {e}")
+
     return {
         "ok": True,
+        "project_id": project_id,
+        "run_id": run_id,
         "website": website,
         "questions_used": questions_used,
         "brand_mention_rate": mention_rate,
         "results": results,
         "locked": True,
     }
-
-
 
 # ---------------------------------------------------------
 # Contract introspection endpoint
@@ -140,6 +205,9 @@ def contract():
     """
     return get_ai_answer_presence_contract()
 
+# ---------------------------------------------------------
+# Create project endpoint
+# ---------------------------------------------------------
 
 @router.post("/project")
 def create_project(payload: dict = Body(...)):
@@ -168,6 +236,5 @@ def create_project(payload: dict = Body(...)):
         cur.close()
         conn.close()
         return {"ok": True, "project_id": project_id}
-
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Project insert failed: {type(e).__name__}: {e}")
