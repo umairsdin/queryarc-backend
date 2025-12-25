@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Body
 from datetime import datetime, timezone
 
 from schemas.contracts import (
@@ -32,7 +32,27 @@ def test_contract(payload: AIAnswerPresenceRequest):
         received_at=datetime.now(timezone.utc),
         echo=payload,
     )
+@router.post("/preview")
+def preview(payload: dict = Body(...)):
+    """
+    MVP preview endpoint (placeholder).
+    Next step: connect OpenAI + DB.
+    """
+    website = payload.get("website", "")
+    topics = payload.get("topics", [])
+    questions = payload.get("questions", [])
+    competitors = payload.get("competitors", [])
 
+    questions_used = questions[:5] if isinstance(questions, list) else []
+
+    return {
+        "ok": True,
+        "website": website,
+        "topics_count": len(topics) if isinstance(topics, list) else 0,
+        "competitors_count": len(competitors) if isinstance(competitors, list) else 0,
+        "questions_used": questions_used,
+        "locked": True,
+    }
 # ---------------------------------------------------------
 # Contract introspection endpoint
 # ---------------------------------------------------------
