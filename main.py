@@ -6,7 +6,10 @@ from fastapi import FastAPI
 from dotenv import load_dotenv
 from tools.ai_answer_presence import router as ai_answer_presence_router
 from tools.arc_rank_checker import router as arc_rank_checker_router
-from db import get_conn
+from db import get_conn, ensure_tables
+import uuid
+import psycopg2
+from psycopg2.extras import Json
 
 # -------------------------------------------------------------------
 # Config
@@ -83,3 +86,21 @@ def db_health():
         return {"db": "ok", "select_1": val}
     except Exception as e:
         return {"db": "error", "detail": str(e)}
+
+@app.on_event("startup")
+def on_startup():
+    ensure_tables()
+
+@app.get("/ai_answer_presence", response_class=HTMLResponse)
+def serve_ai_answer_presence():
+    base_dir = os.path.dirname(__file__)
+    path = os.path.join(base_dir, "static", "ai_answer_presence.html")
+
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        return HTMLResponse(
+            content="<h1>ai_answer_presence.html not found</h1><p>Place it inside /static.</p>",
+            status_code=500,
+        )
