@@ -186,6 +186,43 @@ Return ONLY valid JSON with exactly these keys:
     }
 
 # ---------------------------------------------------------
+# Latest preview endpoint
+# ---------------------------------------------------------
+
+@router.get("/project/{project_id}/latest-preview")
+def latest_preview(project_id: str):
+    ensure_ai_projects_table()
+    ensure_ai_preview_runs_table()
+
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT id, created_at, result
+        FROM ai_preview_runs
+        WHERE project_id = %s
+        ORDER BY created_at DESC
+        LIMIT 1
+        """,
+        (project_id,),
+    )
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="no preview runs found")
+
+    run_id, created_at, result = row
+    return {
+        "ok": True,
+        "project_id": project_id,
+        "run_id": str(run_id),
+        "created_at": created_at,
+        "result": result,
+    }
+
+# ---------------------------------------------------------
 # Contract introspection endpoint
 # ---------------------------------------------------------
 
