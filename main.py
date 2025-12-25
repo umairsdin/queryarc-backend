@@ -1,5 +1,5 @@
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 import os
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI
@@ -18,14 +18,11 @@ from psycopg2.extras import Json
 # Load environment variables
 load_dotenv()
 
-
-
 app = FastAPI()
 
 app.include_router(ai_answer_presence_router)
 app.include_router(arc_rank_checker_router)
 
-# Include routers
 # Allow local HTML frontend to call API
 app.add_middleware(
     CORSMiddleware,
@@ -39,10 +36,11 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
-
 @app.head("/ai_answer_presence")
 def head_ai_answer_presence():
     return
+
+
 # ---------------- Existing routes / helpers ----------------
 
 @app.get("/tools", response_class=HTMLResponse)
@@ -59,6 +57,7 @@ def serve_tools_home():
             status_code=500,
         )
 
+
 @app.get("/site", response_class=HTMLResponse)
 def serve_marketing_site():
     base_dir = os.path.dirname(__file__)
@@ -73,14 +72,22 @@ def serve_marketing_site():
             status_code=500,
         )
 
+
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
 
 
-@app.get("/", response_class=HTMLResponse)
-def serve_index():
-    """Serve the frontend UI."""
+# Root should behave like production: redirect to Arc rank checker
+@app.get("/", include_in_schema=False)
+def root():
+    return RedirectResponse(url="/arc-rank-checker", status_code=302)
+
+
+# Serve the Arc rank checker UI here (your existing index.html)
+@app.get("/arc-rank-checker", response_class=HTMLResponse, include_in_schema=False)
+def serve_arc_rank_checker():
+    """Serve the Arc rank checker frontend UI (index.html)."""
     base_dir = os.path.dirname(__file__)
     index_path = os.path.join(base_dir, "index.html")
 
@@ -92,6 +99,8 @@ def serve_index():
             content="<h1>index.html not found</h1><p>Place index.html next to main.py.</p>",
             status_code=500,
         )
+
+
 @app.get("/db-health")
 def db_health():
     try:
@@ -105,9 +114,11 @@ def db_health():
     except Exception as e:
         return {"db": "error", "detail": str(e)}
 
+
 @app.on_event("startup")
 def on_startup():
     ensure_tables()
+
 
 @app.get("/ai_answer_presence", response_class=HTMLResponse)
 def serve_ai_answer_presence():
