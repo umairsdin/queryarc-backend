@@ -267,3 +267,144 @@ def create_project(payload: dict = Body(...)):
         return {"ok": True, "project_id": project_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Project insert failed: {type(e).__name__}: {e}")
+
+
+# ---------------------------------------------------------
+# Debug seed endpoint (phase 1 proof) - staging/dev only
+# ---------------------------------------------------------
+
+@router.post("/debug/seed-run")
+def debug_seed_run():
+    # Safety: only allow outside production
+    if os.getenv("ENV") == "production":
+        raise HTTPException(status_code=403, detail="disabled in production")
+
+    # Ensure legacy tables still exist (no-op if already)
+    ensure_ai_projects_table()
+    ensure_ai_preview_runs_table()
+
+    # Ensure phase 1 tables exist
+    from db import (
+        ensure_projects_table,
+        ensure_entities_table,
+        ensure_question_sets_table,
+        ensure_runs_table,
+        ensure_run_items_table,
+        ensure_analysis_items_table,
+    )
+
+    ensure_projects_table()
+    ensure_entities_table()
+    ensure_question_sets_table()
+    ensure_runs_table()
+    ensure_run_items_table()
+    ensure_analysis_items_table()
+
+    project_id = str(uuid.uuid4())
+    entity_id = str(uuid.uuid4())
+    qs_id = str(uuid.uuid4())
+    run_id = str(uuid.uuid4())
+    run_item_id = str(uuid.uuid4())
+    analysis_id = str(uuid.uuid4())
+
+    model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    prompt_version = os.getenv("PROMPT_VERSION", "v1")
+    analyzer_version = os.getenv("ANALYZER_VERSION", "v1")
+    qs_version = "v1"
+
+    question_text = "Seed question: does this schema work?"
+
+    conn = get_conn()
+    cur = conn.cursor()
+
+    # projects
+    cur.execute(
+        "INSERT INTO projects (id, name) VALUES (%s, %s)",
+        (project_id, "seed project"),
+    )
+
+    # entities
+    cur.execute(
+        """
+        INSERT INTO entities (id, project_id, type, name, website, brand_terms)
+        VALUES (%s, %s, %s, %s, %s, %s)
+        """,
+        (entity_id, project_id, "customer", "Seed brand", "https://example.com", Json(["Seed brand"])),
+    )
+
+    # question_sets
+    cur.execute(
+        """
+        INSERT INTO question_sets (id, project_id, version, questions)
+        VALUES (%s, %s, %s, %s)
+        """,
+        (qs_id, project_id, qs_version, Json([question_text])),
+    )
+
+    # runs
+    now = datetime.now(timezone.utc)
+    cur.execute(
+        """
+        INSERT INTO runs (id, project_id, question_set_version, model, prompt_version, status, started_at, finished_at, input_snapshot)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """,
+        (
+            run_id,
+            project_id,
+            qs_version,
+            model,
+            prompt_version,
+            "succeeded",
+            now,
+            now,
+            Json({"seed": True, "prompt_template": "seed"}),
+        ),
+    )
+
+    # run_items
+    cur.execute(
+        """
+        INSERT INTO run_items (id, run_id, entity_id, question_index, question_text, raw_answer, raw_meta, error)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """,
+        (
+            run_item_id,
+            run_id,
+            entity_id,
+            0,
+            question_text,
+            "Seed raw answer text",
+            Json({"seed": True}),
+            None,
+        ),
+    )
+
+    # analysis_items
+    cur.execute(
+        """
+        INSERT INTO analysis_items (id, run_item_id, analyzer_version, brand_mentioned, competitors_mentioned, strength_score, evidence_snippet, summary)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """,
+        (
+            analysis_id,
+            run_item_id,
+            analyzer_version,
+            True,
+            Json([]),
+            1.0,
+            "Seed brand",
+            "Seed analysis summary",
+        ),
+    )
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    return {
+        "ok": True,
+        "project_id": project_id,
+        "run_id": run_id,
+        "run_item_id": run_item_id,
+        "analysis_id": analysis_id,
+    }
