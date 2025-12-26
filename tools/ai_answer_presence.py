@@ -448,6 +448,7 @@ def _call_openai_with_retries(
     attempts = 0
     last_err: Optional[Dict[str, Any]] = None
     start = time.time()
+    backoff_total_s = 0.0
 
     while attempts <= max_retries:
         attempts += 1
@@ -461,6 +462,8 @@ def _call_openai_with_retries(
                 "attempts": attempts,
                 "response_id": getattr(resp, "id", None),
                 "latency_ms": int((time.time() - start) * 1000),
+                "backoff_ms_total": int(backoff_total_s * 1000),
+                "prompt_chars": len(prompt or ""),
             }
 
             usage = getattr(resp, "usage", None)
@@ -473,7 +476,11 @@ def _call_openai_with_retries(
             last_err = {"type": type(e).__name__, "message": str(e)[:800], "attempts": attempts}
             if attempts > max_retries:
                 break
-            time.sleep(base_backoff_s * (2 ** (attempts - 1)))
+
+            sleep_s = base_backoff_s * (2 ** (attempts - 1))
+            backoff_total_s += sleep_s
+            time.sleep(sleep_s)
+
         except Exception as e:
             last_err = {"type": type(e).__name__, "message": str(e)[:800], "attempts": attempts}
             break
@@ -482,6 +489,8 @@ def _call_openai_with_retries(
         "model": model,
         "attempts": attempts,
         "latency_ms": int((time.time() - start) * 1000),
+        "backoff_ms_total": int(backoff_total_s * 1000),
+        "prompt_chars": len(prompt or ""),
     }
     return None, raw_meta, last_err
 
