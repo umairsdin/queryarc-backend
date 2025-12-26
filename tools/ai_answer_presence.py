@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 import os
 import json
 import uuid
+import time
 
 from openai import OpenAI
 from psycopg2.extras import Json
@@ -407,4 +408,178 @@ def debug_seed_run():
         "run_id": run_id,
         "run_item_id": run_item_id,
         "analysis_id": analysis_id,
+    }
+
+
+# ---------------------------------------------------------
+# Phase 2: Fetch layer endpoint (fills run_items for entities × questions)
+# ---------------------------------------------------------
+
+@router.post("/run")
+def run_fetch(payload: dict = Body(...)):
+    """
+    Phase 2: fetch raw answers for all entities × questions and store them in run_items.
+    Runs inline for now, but is a single callable execution path we can move to a worker later.
+    """
+    # Ensure phase 1 tables exist
+    from db import (
+        ensure_projects_table,
+        ensure_entities_table,
+        ensure_question_sets_table,
+        ensure_runs_table,
+        ensure_run_items_table,
+    )
+    ensure_projects_table()
+    ensure_entities_table()
+    ensure_question_sets_table()
+    ensure_runs_table()
+    ensure_run_items_table()
+
+    website = (payload.get("website") or "").strip()
+    topics = payload.get("topics") or []
+    competitors = payload.get("competitors") or []
+    questions = payload.get("questions") or []
+
+    if not website:
+        raise HTTPException(status_code=400, detail="website is required")
+    if not isinstance(questions, list) or not questions:
+        raise HTTPException(status_code=400, detail="questions must be a non-empty list")
+
+    # Entities = 1 customer + N competitors (same loop, no special casing)
+    entity_specs = [{"type": "customer", "name": website, "website": website, "brand_terms": [website]}]
+    for c in competitors:
+        c = str(c).strip()
+        if c:
+            entity_specs.append({"type": "competitor", "name": c, "website": None, "brand_terms": [c]})
+
+    # OpenAI client
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="OPENAI_API_KEY is missing on server")
+    client = OpenAI(api_key=api_key)
+
+    model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    prompt_version = os.getenv("PROMPT_VERSION", "v1")
+    question_set_version = payload.get("question_set_version") or "v1"
+
+    run_id = str(uuid.uuid4())
+    project_id = str(uuid.uuid4())
+
+    prompt_template = (
+        "You are an assistant.\n"
+        "Entity: {entity_name}\n"
+        "Website: {entity_website}\n"
+        "Topics: {topics}\n"
+        "Competitors: {competitors}\n\n"
+        "Question: {question}\n"
+    )
+
+    conn = get_conn()
+    cur = conn.cursor()
+
+    # Create project
+    cur.execute(
+        "INSERT INTO projects (id, name) VALUES (%s, %s)",
+        (project_id, "phase2 project"),
+    )
+
+    # Create question set for this run (v1)
+    qs_id = str(uuid.uuid4())
+    cur.execute(
+        "INSERT INTO question_sets (id, project_id, version, questions) VALUES (%s, %s, %s, %s)",
+        (qs_id, project_id, question_set_version, Json(questions)),
+    )
+
+    # Create entities
+    entity_rows = []
+    for es in entity_specs:
+        entity_id = str(uuid.uuid4())
+        entity_rows.append((entity_id, es))
+        cur.execute(
+            """
+            INSERT INTO entities (id, project_id, type, name, website, brand_terms)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            """,
+            (entity_id, project_id, es["type"], es["name"], es["website"], Json(es["brand_terms"])),
+        )
+
+    # Create run
+    started = datetime.now(timezone.utc)
+    cur.execute(
+        """
+        INSERT INTO runs (id, project_id, question_set_version, model, prompt_version, status, started_at, input_snapshot)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """,
+        (
+            run_id,
+            project_id,
+            question_set_version,
+            model,
+            prompt_version,
+            "running",
+            started,
+            Json({"prompt_template": "phase2_fetch_v1", "topics": topics, "competitors": competitors}),
+        ),
+    )
+
+    conn.commit()
+
+    created = 0
+    errors = 0
+
+    for (entity_id, es) in entity_rows:
+        for qi, q in enumerate(questions):
+            item_id = str(uuid.uuid4())
+            t0 = time.time()
+            raw_answer = None
+            raw_meta = {"model": model}
+            err_obj = None
+
+            prompt = prompt_template.format(
+                entity_name=es["name"],
+                entity_website=es["website"] or "",
+                topics=topics,
+                competitors=competitors,
+                question=str(q),
+            )
+
+            try:
+                resp = client.responses.create(model=model, input=prompt)
+                raw_answer = (resp.output_text or "").strip()
+                raw_meta["response_id"] = getattr(resp, "id", None)
+                raw_meta["latency_ms"] = int((time.time() - t0) * 1000)
+            except Exception as e:
+                errors += 1
+                raw_meta["latency_ms"] = int((time.time() - t0) * 1000)
+                err_obj = {"type": type(e).__name__, "message": str(e)[:800]}
+
+            cur.execute(
+                """
+                INSERT INTO run_items (id, run_id, entity_id, question_index, question_text, raw_answer, raw_meta, error)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (item_id, run_id, entity_id, qi, str(q), raw_answer, Json(raw_meta), Json(err_obj) if err_obj else None),
+            )
+            created += 1
+
+    finished = datetime.now(timezone.utc)
+    status = "succeeded" if created > 0 else "failed"
+    cur.execute(
+        "UPDATE runs SET status=%s, finished_at=%s WHERE id=%s",
+        (status, finished, run_id),
+    )
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    return {
+        "ok": True,
+        "run_id": run_id,
+        "project_id": project_id,
+        "entities_count": len(entity_rows),
+        "questions_count": len(questions),
+        "run_items_created": created,
+        "run_items_errors": errors,
+        "status": status,
     }
