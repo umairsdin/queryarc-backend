@@ -12,3 +12,6 @@ __pycache__/
 # macOS junk
 .DS_Store
 **/.DS_Store
+.env
+.env.*
+.env.save
