@@ -4,6 +4,8 @@ import os
 import json
 import uuid
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Any, Dict, Optional, Tuple
 
 from openai import OpenAI
 from psycopg2.extras import Json
@@ -269,7 +271,6 @@ def create_project(payload: dict = Body(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Project insert failed: {type(e).__name__}: {e}")
 
-
 # ---------------------------------------------------------
 # Debug seed endpoint (phase 1 proof) - staging/dev only
 # ---------------------------------------------------------
@@ -410,17 +411,87 @@ def debug_seed_run():
         "analysis_id": analysis_id,
     }
 
+# ---------------------------------------------------------
+# Helpers for Phase 2 optimizations
+# ---------------------------------------------------------
+
+def _safe_usage_to_json(usage: Any) -> Any:
+    if usage is None:
+        return None
+    try:
+        return usage.model_dump()
+    except Exception:
+        pass
+    try:
+        return dict(usage)
+    except Exception:
+        pass
+    return str(usage)
+
+def _call_openai_with_retries(
+    *,
+    api_key: str,
+    model: str,
+    prompt: str,
+    max_retries: int = 3,
+    base_backoff_s: float = 0.6,
+) -> Tuple[Optional[str], Dict[str, Any], Optional[Dict[str, Any]]]:
+    """
+    Returns: (raw_answer, raw_meta, error_obj)
+    """
+    try:
+        from openai import RateLimitError, APIError, APITimeoutError, APIConnectionError  # type: ignore
+        retryable = (RateLimitError, APIError, APITimeoutError, APIConnectionError)
+    except Exception:
+        retryable = (Exception,)
+
+    attempts = 0
+    last_err: Optional[Dict[str, Any]] = None
+    start = time.time()
+
+    while attempts <= max_retries:
+        attempts += 1
+        try:
+            client = OpenAI(api_key=api_key)
+            resp = client.responses.create(model=model, input=prompt)
+            raw_answer = (getattr(resp, "output_text", "") or "").strip()
+
+            raw_meta: Dict[str, Any] = {
+                "model": model,
+                "attempts": attempts,
+                "response_id": getattr(resp, "id", None),
+                "latency_ms": int((time.time() - start) * 1000),
+            }
+
+            usage = getattr(resp, "usage", None)
+            if usage is not None:
+                raw_meta["usage"] = _safe_usage_to_json(usage)
+
+            return raw_answer, raw_meta, None
+
+        except retryable as e:
+            last_err = {"type": type(e).__name__, "message": str(e)[:800], "attempts": attempts}
+            if attempts > max_retries:
+                break
+            time.sleep(base_backoff_s * (2 ** (attempts - 1)))
+        except Exception as e:
+            last_err = {"type": type(e).__name__, "message": str(e)[:800], "attempts": attempts}
+            break
+
+    raw_meta = {
+        "model": model,
+        "attempts": attempts,
+        "latency_ms": int((time.time() - start) * 1000),
+    }
+    return None, raw_meta, last_err
 
 # ---------------------------------------------------------
 # Phase 2: Fetch layer endpoint (fills run_items for entities × questions)
+# Optimized: concurrency + retries + batch inserts + progress updates
 # ---------------------------------------------------------
 
 @router.post("/run")
 def run_fetch(payload: dict = Body(...)):
-    """
-    Phase 2: fetch raw answers for all entities × questions and store them in run_items.
-    Runs inline for now, but is a single callable execution path we can move to a worker later.
-    """
     # Ensure phase 1 tables exist
     from db import (
         ensure_projects_table,
@@ -445,6 +516,13 @@ def run_fetch(payload: dict = Body(...)):
     if not isinstance(questions, list) or not questions:
         raise HTTPException(status_code=400, detail="questions must be a non-empty list")
 
+    # Optional quick test knobs
+    max_questions = payload.get("max_questions")
+    max_entities = payload.get("max_entities")
+
+    if isinstance(max_questions, int) and max_questions > 0:
+        questions = questions[:max_questions]
+
     # Entities = 1 customer + N competitors (same loop, no special casing)
     entity_specs = [{"type": "customer", "name": website, "website": website, "brand_terms": [website]}]
     for c in competitors:
@@ -452,15 +530,25 @@ def run_fetch(payload: dict = Body(...)):
         if c:
             entity_specs.append({"type": "competitor", "name": c, "website": None, "brand_terms": [c]})
 
-    # OpenAI client
+    if isinstance(max_entities, int) and max_entities > 0:
+        entity_specs = entity_specs[:max_entities]
+
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         raise HTTPException(status_code=500, detail="OPENAI_API_KEY is missing on server")
-    client = OpenAI(api_key=api_key)
 
     model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
     prompt_version = os.getenv("PROMPT_VERSION", "v1")
     question_set_version = payload.get("question_set_version") or "v1"
+
+    # Concurrency + retries (safe defaults)
+    max_concurrency = payload.get("max_concurrency")
+    if not isinstance(max_concurrency, int) or max_concurrency <= 0:
+        max_concurrency = 4
+
+    max_retries = payload.get("max_retries")
+    if not isinstance(max_retries, int) or max_retries < 0:
+        max_retries = 3
 
     run_id = str(uuid.uuid4())
     project_id = str(uuid.uuid4())
@@ -483,7 +571,7 @@ def run_fetch(payload: dict = Body(...)):
         (project_id, "phase2 project"),
     )
 
-    # Create question set for this run (v1)
+    # Create question set
     qs_id = str(uuid.uuid4())
     cur.execute(
         "INSERT INTO question_sets (id, project_id, version, questions) VALUES (%s, %s, %s, %s)",
@@ -503,6 +591,8 @@ def run_fetch(payload: dict = Body(...)):
             (entity_id, project_id, es["type"], es["name"], es["website"], Json(es["brand_terms"])),
         )
 
+    total_items = len(entity_rows) * len(questions)
+
     # Create run
     started = datetime.now(timezone.utc)
     cur.execute(
@@ -518,55 +608,120 @@ def run_fetch(payload: dict = Body(...)):
             prompt_version,
             "running",
             started,
-            Json({"prompt_template": "phase2_fetch_v1", "topics": topics, "competitors": competitors}),
+            Json({
+                "prompt_template": "phase2_fetch_v1",
+                "topics": topics,
+                "competitors": competitors,
+                "progress": {"total": total_items, "done": 0, "errors": 0},
+                "settings": {"max_concurrency": max_concurrency, "max_retries": max_retries},
+            }),
         ),
     )
-
     conn.commit()
+
+    def build_task(entity_id: str, es: dict, qi: int, q: str):
+        prompt = prompt_template.format(
+            entity_name=es["name"],
+            entity_website=es["website"] or "",
+            topics=topics,
+            competitors=competitors,
+            question=str(q),
+        )
+        return entity_id, qi, str(q), prompt
+
+    tasks = []
+    for (entity_id, es) in entity_rows:
+        for qi, q in enumerate(questions):
+            tasks.append(build_task(entity_id, es, qi, q))
 
     created = 0
     errors = 0
 
-    for (entity_id, es) in entity_rows:
-        for qi, q in enumerate(questions):
-            item_id = str(uuid.uuid4())
-            t0 = time.time()
-            raw_answer = None
-            raw_meta = {"model": model}
-            err_obj = None
+    # Batch insert buffer
+    batch_size = 25
+    buffer_rows = []
 
-            prompt = prompt_template.format(
-                entity_name=es["name"],
-                entity_website=es["website"] or "",
-                topics=topics,
-                competitors=competitors,
-                question=str(q),
+    def worker(task):
+        entity_id, qi, q_text, prompt = task
+        raw_answer, raw_meta, err_obj = _call_openai_with_retries(
+            api_key=api_key,
+            model=model,
+            prompt=prompt,
+            max_retries=max_retries,
+        )
+        item_id = str(uuid.uuid4())
+        return item_id, entity_id, qi, q_text, raw_answer, raw_meta, err_obj
+
+    def flush_buffer():
+        nonlocal buffer_rows, created, errors
+        if not buffer_rows:
+            return
+
+        cur.executemany(
+            """
+            INSERT INTO run_items (id, run_id, entity_id, question_index, question_text, raw_answer, raw_meta, error)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """,
+            buffer_rows,
+        )
+        buffer_rows = []
+
+        # Update progress inside input_snapshot (no schema changes needed)
+        progress_json = json.dumps({"total": total_items, "done": created, "errors": errors})
+        cur.execute(
+            """
+            UPDATE runs
+            SET input_snapshot = jsonb_set(input_snapshot, '{progress}', %s::jsonb, true)
+            WHERE id = %s
+            """,
+            (progress_json, run_id),
+        )
+        conn.commit()
+
+    with ThreadPoolExecutor(max_workers=max_concurrency) as ex:
+        futures = [ex.submit(worker, t) for t in tasks]
+        for fut in as_completed(futures):
+            item_id, entity_id, qi, q_text, raw_answer, raw_meta, err_obj = fut.result()
+
+            buffer_rows.append(
+                (
+                    item_id,
+                    run_id,
+                    entity_id,
+                    qi,
+                    q_text,
+                    raw_answer,
+                    Json(raw_meta),
+                    Json(err_obj) if err_obj else None,
+                )
             )
 
-            try:
-                resp = client.responses.create(model=model, input=prompt)
-                raw_answer = (resp.output_text or "").strip()
-                raw_meta["response_id"] = getattr(resp, "id", None)
-                raw_meta["latency_ms"] = int((time.time() - t0) * 1000)
-            except Exception as e:
-                errors += 1
-                raw_meta["latency_ms"] = int((time.time() - t0) * 1000)
-                err_obj = {"type": type(e).__name__, "message": str(e)[:800]}
-
-            cur.execute(
-                """
-                INSERT INTO run_items (id, run_id, entity_id, question_index, question_text, raw_answer, raw_meta, error)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                """,
-                (item_id, run_id, entity_id, qi, str(q), raw_answer, Json(raw_meta), Json(err_obj) if err_obj else None),
-            )
             created += 1
+            if err_obj:
+                errors += 1
+
+            if len(buffer_rows) >= batch_size:
+                flush_buffer()
+
+    # Final flush
+    flush_buffer()
 
     finished = datetime.now(timezone.utc)
     status = "succeeded" if created > 0 else "failed"
     cur.execute(
         "UPDATE runs SET status=%s, finished_at=%s WHERE id=%s",
         (status, finished, run_id),
+    )
+
+    # Final progress update
+    final_progress_json = json.dumps({"total": total_items, "done": created, "errors": errors})
+    cur.execute(
+        """
+        UPDATE runs
+        SET input_snapshot = jsonb_set(input_snapshot, '{progress}', %s::jsonb, true)
+        WHERE id = %s
+        """,
+        (final_progress_json, run_id),
     )
 
     conn.commit()
@@ -582,4 +737,5 @@ def run_fetch(payload: dict = Body(...)):
         "run_items_created": created,
         "run_items_errors": errors,
         "status": status,
+        "settings": {"max_concurrency": max_concurrency, "max_retries": max_retries},
     }
