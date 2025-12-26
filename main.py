@@ -57,11 +57,33 @@ def db_health():
     try:
         conn = get_conn()
         cur = conn.cursor()
+
         cur.execute("SELECT 1;")
         val = cur.fetchone()[0]
+
+        cur.execute("SELECT current_database(), inet_server_addr(), inet_server_port();")
+        db_name, server_addr, server_port = cur.fetchone()
+
+        cur.execute("""
+            select tablename
+            from pg_tables
+            where schemaname = 'public'
+              and tablename in ('projects','entities','question_sets','runs','run_items','analysis_items')
+            order by tablename;
+        """)
+        phase1_tables = [r[0] for r in cur.fetchall()]
+
         cur.close()
         conn.close()
-        return {"db": "ok", "select_1": val}
+
+        return {
+            "db": "ok",
+            "select_1": val,
+            "current_database": db_name,
+            "server_addr": str(server_addr),
+            "server_port": server_port,
+            "phase1_tables_found": phase1_tables,
+        }
     except Exception as e:
         return {"db": "error", "detail": str(e)}
 
