@@ -1,132 +1,56 @@
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse, RedirectResponse
+from __future__ import annotations
+
 import os
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi import FastAPI
+
 from dotenv import load_dotenv
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
+
+from db import get_conn, ensure_tables
 from tools.ai_answer_presence import router as ai_answer_presence_router
 from tools.arc_rank_checker import router as arc_rank_checker_router
-from db import get_conn, ensure_tables
-import uuid
-import psycopg2
-from psycopg2.extras import Json
-from fastapi.middleware.cors import CORSMiddleware
-import os
 
-from fastapi import FastAPI
-
-app = FastAPI()
-
-@app.get("/health")
-def health():
-    return {"ok": True}
-
-
-origins = [
-  "https://tools.queryarc.com",
-  "https://tools-staging.queryarc.com",
-]
-
-# optional: allow local dev
-if os.getenv("ENV") != "production":
-    origins += ["http://localhost:5173", "http://127.0.0.1:5173"]
-
-app.add_middleware(
-  CORSMiddleware,
-  allow_origins=origins,
-  allow_credentials=False,  # keep False unless you are using cookies-based auth
-  allow_methods=["*"],
-  allow_headers=["*"],
-)
 # -------------------------------------------------------------------
 # Config
 # -------------------------------------------------------------------
-
-# Load environment variables
 load_dotenv()
 
 app = FastAPI()
 
-app.include_router(ai_answer_presence_router)
-app.include_router(arc_rank_checker_router)
+# -------------------------------------------------------------------
+# CORS (single middleware)
+# -------------------------------------------------------------------
+origins = [
+    "https://tools.queryarc.com",
+    "https://tools-staging.queryarc.com",
+]
 
-# Allow local HTML frontend to call API
+# Optional: allow local dev
+if os.getenv("ENV") != "production":
+    origins += ["http://localhost:5173", "http://127.0.0.1:5173"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=origins,
+    allow_credentials=False,  # keep False unless you are using cookies-based auth
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Serve static files (CSS, JS)
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# -------------------------------------------------------------------
+# Routers
+# -------------------------------------------------------------------
+app.include_router(ai_answer_presence_router)
+app.include_router(arc_rank_checker_router)
 
-
-@app.head("/ai_answer_presence")
-def head_ai_answer_presence():
-    return
-
-
-# ---------------- Existing routes / helpers ----------------
-
-@app.get("/tools", response_class=HTMLResponse)
-def serve_tools_home():
-    base_dir = os.path.dirname(__file__)
-    path = os.path.join(base_dir, "static", "tools.html")
-
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            return f.read()
-    except FileNotFoundError:
-        return HTMLResponse(
-            content="<h1>tools.html not found</h1><p>Place it inside /static.</p>",
-            status_code=500,
-        )
-
-
-@app.get("/site", response_class=HTMLResponse)
-def serve_marketing_site():
-    base_dir = os.path.dirname(__file__)
-    path = os.path.join(base_dir, "website", "index.html")
-
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            return f.read()
-    except Exception:
-        return HTMLResponse(
-            "<h1>Marketing site not found</h1><p>Place index.html inside /website folder.</p>",
-            status_code=500,
-        )
-
-
+# -------------------------------------------------------------------
+# Health + DB
+# -------------------------------------------------------------------
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
-
-
-# Root should behave like production: redirect to Arc rank checker
-@app.get("/", include_in_schema=False)
-def root():
-    return RedirectResponse(url="/arc-rank-checker", status_code=302)
-
-
-# Serve the Arc rank checker UI here (your existing index.html)
-@app.get("/arc-rank-checker", response_class=HTMLResponse, include_in_schema=False)
-def serve_arc_rank_checker():
-    """Serve the Arc rank checker frontend UI (index.html)."""
-    base_dir = os.path.dirname(__file__)
-    index_path = os.path.join(base_dir, "index.html")
-
-    try:
-        with open(index_path, "r", encoding="utf-8") as f:
-            return f.read()
-    except FileNotFoundError:
-        return HTMLResponse(
-            content="<h1>index.html not found</h1><p>Place index.html next to main.py.</p>",
-            status_code=500,
-        )
-
 
 @app.get("/db-health")
 def db_health():
@@ -141,22 +65,92 @@ def db_health():
     except Exception as e:
         return {"db": "error", "detail": str(e)}
 
-
 @app.on_event("startup")
 def on_startup():
+    """
+    In production/staging on Railway, we want to fail fast if DB is misconfigured.
+    Locally, you can run without DB by not setting DATABASE_URL.
+    """
+    db_url = os.getenv("DATABASE_URL")
+    if not db_url:
+        if os.getenv("ENV") == "production":
+            raise RuntimeError("DATABASE_URL is missing")
+        # Local/dev: skip table creation
+        return
     ensure_tables()
 
+# -------------------------------------------------------------------
+# Root behavior (API-only)
+# -------------------------------------------------------------------
+@app.get("/", include_in_schema=False)
+def root():
+    # Keep API domains looking like an API, not an old UI.
+    return RedirectResponse(url="/docs", status_code=302)
 
-@app.get("/ai_answer_presence", response_class=HTMLResponse)
-def serve_ai_answer_presence():
-    base_dir = os.path.dirname(__file__)
-    path = os.path.join(base_dir, "static", "ai_answer_presence.html")
+# -------------------------------------------------------------------
+# Legacy HTML pages (optional, behind a flag)
+# -------------------------------------------------------------------
+SERVE_LEGACY_UI = os.getenv("SERVE_LEGACY_UI", "").lower() in ("1", "true", "yes")
 
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            return f.read()
-    except FileNotFoundError:
-        return HTMLResponse(
-            content="<h1>ai_answer_presence.html not found</h1><p>Place it inside /static.</p>",
-            status_code=500,
-        )
+if SERVE_LEGACY_UI:
+    app.mount("/static", StaticFiles(directory="static"), name="static")
+
+    @app.head("/ai_answer_presence")
+    def head_ai_answer_presence():
+        return
+
+    @app.get("/tools", response_class=HTMLResponse)
+    def serve_tools_home():
+        base_dir = os.path.dirname(__file__)
+        path = os.path.join(base_dir, "static", "tools.html")
+
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                return f.read()
+        except FileNotFoundError:
+            return HTMLResponse(
+                content="<h1>tools.html not found</h1><p>Place it inside /static.</p>",
+                status_code=500,
+            )
+
+    @app.get("/site", response_class=HTMLResponse)
+    def serve_marketing_site():
+        base_dir = os.path.dirname(__file__)
+        path = os.path.join(base_dir, "website", "index.html")
+
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                return f.read()
+        except Exception:
+            return HTMLResponse(
+                "<h1>Marketing site not found</h1><p>Place index.html inside /website folder.</p>",
+                status_code=500,
+            )
+
+    @app.get("/arc-rank-checker", response_class=HTMLResponse, include_in_schema=False)
+    def serve_arc_rank_checker():
+        base_dir = os.path.dirname(__file__)
+        index_path = os.path.join(base_dir, "index.html")
+
+        try:
+            with open(index_path, "r", encoding="utf-8") as f:
+                return f.read()
+        except FileNotFoundError:
+            return HTMLResponse(
+                content="<h1>index.html not found</h1><p>Place index.html next to main.py.</p>",
+                status_code=500,
+            )
+
+    @app.get("/ai_answer_presence", response_class=HTMLResponse)
+    def serve_ai_answer_presence():
+        base_dir = os.path.dirname(__file__)
+        path = os.path.join(base_dir, "static", "ai_answer_presence.html")
+
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                return f.read()
+        except FileNotFoundError:
+            return HTMLResponse(
+                content="<h1>ai_answer_presence.html not found</h1><p>Place it inside /static.</p>",
+                status_code=500,
+            )
