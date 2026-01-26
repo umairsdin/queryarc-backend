@@ -23,6 +23,7 @@ app = FastAPI()
 # CORS (single middleware)
 # -------------------------------------------------------------------
 origins = [
+    "https://app.queryarc.com",
     "https://tools.queryarc.com",
     "https://tools-staging.queryarc.com",
 ]
